@@ -1,0 +1,6 @@
+{
+  "analyst_demos": [
+    { "input": "RW | GPS_ACC: 3m", "report": "Asset: RW | GPS: GOOD (3m)" },
+    { "input": "UAV | GPS_ACC: 12m", "report": "Asset: UAV | GPS: POOR (12m)" }
+  ]
+}

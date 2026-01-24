@@ -1,0 +1,36 @@
+{
+  "predict": {
+    "traces": [],
+    "train": [],
+    "demos": [
+      {
+        "raw_telemetry": "c0f469f1-4932-4a72-9446-80578b52ba11 | Type: AIR | Status: Active | BATT: 55% | GPS: GPS (0.1m)  | 👁️ VISUAL: {'Human': 1}"
+      }
+    ],
+    "signature": {
+      "instructions": "You are a Defense Data Scientist.\nAnalyze telemetry. Priority: VISUALS > GPS ACCURACY > BATTERY.\n\nRULES:\n- If \"RTK-FIX\" or <1m Accuracy -> GPS: GOOD (RTK)\n- If \"VISUAL: Human\" -> Report \"CONTACT: Human detected\"\n- If Accuracy > 10m -> GPS: POOR",
+      "fields": [
+        {
+          "prefix": "Raw Telemetry:",
+          "description": "Raw MQTT data"
+        },
+        {
+          "prefix": "Reasoning: Let's think step by step in order to",
+          "description": "${reasoning}"
+        },
+        {
+          "prefix": "Report:",
+          "description": "Forensic SITREP"
+        }
+      ]
+    },
+    "lm": null
+  },
+  "metadata": {
+    "dependency_versions": {
+      "python": "3.12",
+      "dspy": "3.1.2",
+      "cloudpickle": "3.1"
+    }
+  }
+}
