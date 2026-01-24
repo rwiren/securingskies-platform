@@ -158,25 +158,32 @@ See `CITATION.cff` for BibTeX format.
 
 ## 🤝 How to Contribute
 
-We follow a strict DevOps workflow to ensure integrity across Apple Silicon, Intel, and Windows.
+We follow a lean Research & Development workflow focused on the **nightly** branch.
 
 ### 1. The Golden Rule
-**Main is protected.** Never push directly to main. Always use a feature branch.
+**Nightly is the Edge.** We develop on `nightly`. `main` is for stable releases only.
 
 ### 2. Workflow
-1.  **Sync:** `git checkout main && git pull origin main`
-2.  **Branch:** `git checkout -b feature/your-feature-name`
-3.  **Test:** Run `make report` (Must pass locally!)
+1.  **Sync:** `git checkout nightly && git pull origin nightly`
+2.  **Branch:** `git checkout -b feat/your-new-driver`
+3.  **Test:** * Run `python3 web/server.py` (Dashboard)
+    * Run `python3 labs/sim_px4.py` (Simulator)
+    * *Verify the Orange Dot appears.*
 4.  **Commit:** Use [Conventional Commits](https://www.conventionalcommits.org/) (e.g., `feat:`, `fix:`, `docs:`).
-5.  **Merge:** Open a Pull Request.
+5.  **Push:** Push to origin and open a PR against `nightly`.
 
 ### 3. Setup
-- **Vault Password:** You need the project secret to decrypt configuration files.
-    - *Action:* Ask the Maintainer for the password, then run:
-    - `echo 'THE_PASSWORD' > .vault_pass`
-- **Environment:** Run `make setup` to initialize the Python environment.
+-   **Secrets:** We use a local `.env` file (not committed) for IP configuration.
+    ```bash
+    cp .env.example .env
+    # Edit MQTT_BROKER=192.168.1.100
+    ```
+-   **Environment:** Standard Python Virtual Environment.
+    ```bash
+    python3 -m venv venv
+    source venv/bin/activate
+    pip install -r requirements.txt
+    ```
 
 ---
-
-*SecuringSkies Research Grid | Status: OPERATIONAL*
-
+*SecuringSkies Research Grid | Status: NIGHTLY v0.9.9*
