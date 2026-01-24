@@ -33,7 +33,8 @@ MQTT_PORT = int(os.getenv("MQTT_PORT", 1883))
 TOPICS = [
     ("owntracks/#", 0),       # Phones/Team
     ("dronetag/#", 0),        # Remote ID
-    ("thing/product/#", 0)    # Autel Enterprise (Control & UAV)
+    ("thing/product/#", 0),   # Autel Enterprise (Control & UAV)
+    ("pixhawk/#", 0)          # MAVlink protocol
 ]
 
 # 2. SETUP
@@ -121,6 +122,10 @@ def on_message(client, userdata, msg):
                 tid += " (RC)"
             else:
                 icon = "helicopter" # Orange (Air Asset)
+        # D. MAVLink / Pixhawk (General Drones)
+        elif "pixhawk" in topic:
+            tid = payload.get("tid", "PX4-UNK")
+            icon = "helicopter" # Orange
 
         # --- UPDATE STATE ---
         if lat is not None and lon is not None:
