@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-SecuringSkies Platform v2.7 - Command & Control Interface
-=========================================================
+SecuringSkies Platform v0.9.1 - Command & Control Interface
+===========================================================
 ARCHITECTURAL OVERVIEW:
 This is the bootloader for the Autonomous Ground Control Station (AGCS).
 It initializes the Modular Architecture:
@@ -9,7 +9,7 @@ It initializes the Modular Architecture:
 2. Officer (securingskies.core.officer) - Central intelligence.
 3. Network (Paho MQTT) - Data transport layer.
 
-STATUS: PRODUCTION (Full Feature Parity)
+STATUS: PRODUCTION (v0.9.1 - Refined Logging)
 """
 
 import argparse
@@ -18,6 +18,7 @@ import time
 import signal
 import logging
 import subprocess
+import os
 from rich.console import Console
 from rich.panel import Panel
 import paho.mqtt.client as mqtt
@@ -38,18 +39,29 @@ except ImportError:
 
 # UI Setup
 console = Console()
-logging.basicConfig(level=logging.WARNING)
+
+# ------------------------------------------------------
+# 🔧 LOGGING HYGIENE (Fixing the "phue" spam)
+# ------------------------------------------------------
+logging.basicConfig(level=logging.WARNING) # Global default
+# Silence chatty libraries
+logging.getLogger("phue").setLevel(logging.ERROR) 
+logging.getLogger("urllib3").setLevel(logging.ERROR)
+# Allow our core modules to speak
+logging.getLogger("core.officer").setLevel(logging.INFO)
+logging.getLogger("outputs.recorder").setLevel(logging.INFO)
+logging.getLogger("outputs.hue").setLevel(logging.INFO)
 
 # Global State
 commander = None
 replay_process = None
 
 # ======================================================
-# 1. CLI CONFIGURATION (Legacy Help Text)
+# 1. CLI CONFIGURATION (The Manifesto)
 # ======================================================
 def get_cli_args():
     parser = argparse.ArgumentParser(
-        description="🦅 GHOST COMMANDER v2.7 - Modular AGCS Platform",
+        description="🦅 GHOST COMMANDER v0.9.1 - Modular AGCS Platform",
         formatter_class=argparse.RawTextHelpFormatter,
         epilog="""
 SCIENTIFIC TELEMETRY STANDARDS:
@@ -68,6 +80,11 @@ SCIENTIFIC TELEMETRY STANDARDS:
    - Latency: Optimized for <100ms processing time (QoS 0).
    - Watchdog: Validates telemetry freshness (Threshold: 90s).
 
+CLOUD OPERATIONS (securingskies.eu):
+------------------------------------
+To connect to a public secure broker:
+  python3 main.py --ip mqtt.securingskies.eu --tls --username "admin" --password "secret"
+
 USEFUL UTILITIES:
   ollama list           # List installed models
   say -v "?"            # List available system voices (MacOS)
@@ -80,10 +97,13 @@ USEFUL UTILITIES:
     mission.add_argument("--traffic", action="store_true", help="Track Cars/Trucks in Vision AI")
     mission.add_argument("--persona", type=str, default="pilot", choices=["pilot", "commander", "analyst"], help="Select AI Personality")
     
-    # Network
+    # Network (Cloud Ready)
     net = parser.add_argument_group('📡 Network & Intelligence')
-    net.add_argument("--ip", type=str, default="192.168.192.100", help="Broker IP (Default: 192.168.192.100)")
-    net.add_argument("--port", type=int, default=1883, help="Broker Port")
+    net.add_argument("--ip", type=str, default="192.168.192.100", help="Broker IP/Domain (Default: 192.168.192.100)")
+    net.add_argument("--port", type=int, default=1883, help="Broker Port (Default: 1883, or 8883 for TLS)")
+    net.add_argument("--tls", action="store_true", help="Enable SSL/TLS Encryption (Required for Cloud)")
+    net.add_argument("--username", type=str, help="MQTT Username")
+    net.add_argument("--password", type=str, help="MQTT Password")
     net.add_argument("--model", type=str, default="llama3.1", help="AI Model (Default: llama3.1)")
     net.add_argument("--cloud", action="store_true", help="Use OpenAI (Cloud) instead of Ollama (Local)")
 
@@ -119,12 +139,13 @@ def on_connect(client, userdata, flags, rc, properties=None):
         client.subscribe(topics)
     else:
         console.print(f"[bold red]❌ CONNECTION FAILED (RC: {rc})[/bold red]")
+        if rc == 5: console.print("[yellow]💡 Hint: Check your Username/Password[/yellow]")
 
 def on_message(client, userdata, msg):
     if commander:
         commander.process_traffic(msg.topic, msg.payload)
-        if commander.debug_mode:
-            print(".", end="", flush=True)
+        # VISIBILITY FIX: Always print heartbeat dots, so you know it's alive
+        print(".", end="", flush=True) 
 
 # ======================================================
 # 3. REPLAY ENGINE
@@ -158,13 +179,14 @@ def main():
 
     args = get_cli_args()
 
+    # Replay Shim
     if args.replay:
         target_ip = args.ip if args.ip != "192.168.192.100" else "127.0.0.1"
         args.ip = target_ip 
         start_replay(args.replay, args.jump, args.speed, target_ip)
         time.sleep(2) 
 
-    console.print(Panel.fit(f"[bold yellow]🦅 GHOST COMMANDER v2.7 (Modular Platform)[/bold yellow]"))
+    console.print(Panel.fit(f"[bold yellow]🦅 GHOST COMMANDER v0.9.1 (Modular Platform)[/bold yellow]"))
     
     ai_engine = "openai" if args.cloud else "ollama"
     model_name = "gpt-4o" if args.cloud else args.model.replace("ollama:", "")
@@ -172,17 +194,30 @@ def main():
     console.print(f"🧠 BRAIN: [bold green]{model_name.upper()} ({ai_engine})[/bold green]")
     console.print(f"🎭 PERSONA: [bold cyan]{args.persona.upper()}[/bold cyan] | 📡 BROKER: {args.ip}")
 
-    # Correctly initializing the Commander with Hue support
+    # Initialize Core (With Visibility Flags)
     commander = GhostCommander(
         ai_engine=ai_engine, 
         model=model_name, 
         record_enabled=args.record, 
-        hue_enabled=args.hue
+        hue_enabled=args.hue,
+        metrics_enabled=args.metrics
     )
     commander.debug_mode = args.debug
     commander.track_traffic = args.traffic
 
+    # Network Setup
     client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+    
+    # Auth & TLS
+    if args.username and args.password:
+        client.username_pw_set(args.username, args.password)
+        console.print("[dim]🔑 Authentication Enabled[/dim]")
+
+    if args.tls or (args.port == 8883):
+        client.tls_set()
+        console.print("[dim]🔒 TLS Encryption Enabled[/dim]")
+        if args.port == 1883: args.port = 8883
+
     client.on_connect = on_connect
     client.on_message = on_message
     
@@ -199,6 +234,8 @@ def main():
         try:
             time.sleep(1)
             if time.time() - last_report > args.interval:
+                # Spacer for visual clarity
+                print("") 
                 console.print(Panel(f"[bold cyan]⚡ DIRECTOR UPDATE ({time.strftime('%H:%M:%S')})[/bold cyan]", border_style="cyan"))
                 
                 report = commander.generate_sitrep(args.persona, show_prompt=args.show_prompt)
