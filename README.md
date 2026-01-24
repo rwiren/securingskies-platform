@@ -1,7 +1,7 @@
 # 🦅 SecuringSkies Platform
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-v0.9.0-green.svg)](#)
+[![Version](https://img.shields.io/badge/Version-v0.9.8-green.svg)](#)
 [![Status](https://img.shields.io/badge/Status-Operational-success.svg)](#)
 [![Python](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](#)
 [![Code Style](https://img.shields.io/badge/Code%20Style-Black-000000.svg)](https://github.com/psf/black)
