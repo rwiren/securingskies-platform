@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.8] - 2026-01-25
+### Added
+- **Tactical Dashboard (Phase 3):** Real-time WebSocket map (`web/server.py`) using Flask & Leaflet.js.
+- **Recursive Parsing:** "Nuclear Option" JSON extractor to handle nested Autel/DroneTag telemetry.
+- **Icon Classification:** Added visual distinction for Controllers (Cyan), Drones (Orange), Phones (Blue), and Hostiles (Red).
+- **Dark Mode:** Tactical CSS theme for the frontend map.
+
+### Fixed
+- **Autel Driver:** Resolved issue where `data.data` nesting caused GPS packets to be dropped.
+- **Controller Detection:** Fixed logic to identify Smart Controllers (`TH78...`) vs UAVs (`1748...`).
+- **Null Island:** Added filtering to ignore coordinates at (0.0, 0.0).
+
+## [0.9.4] - 2026-01-24
+### Security & Stability
+- **Dependency Lock:** Frozen `requirements.txt` with `paho-mqtt>=2.0.0` to prevent API version crashes.
+- **AI Hallucinations:** Updated `officer.py` System Prompt to prevent "Negative Hallucinations" (claiming "No humans" when blind).
+- **Hue Driver:** Hardened `hue.py` with retry logic to prevent crashes during network blips.
+
 ## [0.9.0] - 2026-01-24
 ### Added
 - **Modular Core:** Replaced monolithic `ai_officer_v47.py` with `securingskies/core/officer.py`.
@@ -18,6 +36,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **CLI:** `main.py` now uses a standardized `argparse` structure with rich help menus.
 - **Logging:** All logs now persist to `logs/mission_*.jsonl` by default when enabled.
-
-### Migrated
-- Full logic port from Legacy `ai_officer_v47.py`.
