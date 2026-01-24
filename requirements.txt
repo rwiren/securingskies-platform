@@ -1,19 +1,27 @@
 # 🦅 SecuringSkies Platform Dependencies
-# Status: GOLD MASTER (v47.0)
+# Status: PLATFORM v0.9.4
 
 # --- Core Infrastructure ---
-paho-mqtt>=1.6.1       # The nervous system (MQTT 5.0 client)
-python-dotenv>=1.0.0   # Secrets management (.env loader)
-requests>=2.31.0       # HTTP Client for Ollama/Rest APIs
-
-# --- User Interface ---
-rich>=13.7.0           # Tactical Console UI (Tables/Panels)
-phue>=1.1              # Philips Hue Lighting Control
+paho-mqtt>=2.0.0       # CRITICAL: Must be v2.0+ for CallbackAPIVersion.VERSION2
+python-dotenv>=1.0.0   # Secrets management
+requests>=2.31.0       # HTTP Client
+urllib3>=2.0.0         # Dependency for requests
 
 # --- Artificial Intelligence ---
-openai>=1.10.0         # Cloud Intelligence (GPT-4o)
-dspy-ai>=2.1.0         # RL Optimization (The "Gym" for the Analyst)
+openai>=1.10.0         # Cloud Intelligence
+ollama>=0.1.6          # Local Intelligence (Llama 3)
+dspy-ai>=2.1.0         # RL Optimization
 
-# --- Data Science & R&D ---
-pandas>=2.2.0          # (Optional) For analyzing metrics.csv later
-matplotlib>=3.8.0      # (Optional) For graphing latency plots
+# --- User Interface & Hardware ---
+rich>=13.7.0           # Tactical Console UI
+phue>=1.1              # Philips Hue Lighting Control
+
+# --- Web Dashboard (Phase 3) ---
+flask>=3.0.0           # Web Server
+flask-socketio>=5.3.6  # Real-time Map Updates
+gevent>=23.9.1         # Production WSGI Server
+
+# --- Data Science (Optional) ---
+pandas>=2.2.0
+matplotlib>=3.8.0
+numpy>=1.26.0

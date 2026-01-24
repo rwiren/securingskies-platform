@@ -3,6 +3,7 @@ SecuringSkies Platform - Hue Lighting Controller
 ================================================
 Role: Ambient Status Display
 Feature Parity: Restores specific color codes from Legacy v47.
+Fixes: Added Circuit Breaker pattern to prevent Timeouts from crashing Main.
 Dependencies: pip install phue
 """
 
@@ -14,32 +15,35 @@ logger = logging.getLogger("outputs.hue")
 
 class HueController:
     # ------------------------------------------------------------------
-    # CONFIGURATION (From Legacy v47)
+    # CONFIGURATION
     # ------------------------------------------------------------------
     DEFAULT_IP = "192.168.1.228"
     TARGET_LIGHTS = ["Hue bloom L", "Hue bloom R", "Hue color bar", "Hue color bar right", "Hue go 1"]
     
-    # Circuit Breaker to prevent log spam if bridge is offline
-    _connection_attempted = False
-    _is_connected = False
-
+    # Circuit Breaker Config
+    RETRY_COOLDOWN = 30 # Seconds to wait after a failure
+    
     def __init__(self, enabled=True):
         self.enabled = enabled
         self.bridge = None
-        
+        self._last_failure_time = 0
+        self._is_connected = False
+
         if self.enabled:
             self._connect()
 
     def _connect(self):
-        """Establishes connection to the Philips Hue Bridge."""
-        if self._connection_attempted and not self._is_connected: return
+        """Establishes connection to the Philips Hue Bridge with Timeout safety."""
+        # Circuit Breaker: Don't retry if we just failed recently
+        if time.time() - self._last_failure_time < self.RETRY_COOLDOWN:
+            return
 
         ip = os.getenv("HUE_BRIDGE_IP", self.DEFAULT_IP)
-        self._connection_attempted = True
         
         try:
             from phue import Bridge
-            self.bridge = Bridge(ip)
+            # Set a strict timeout so we don't block the Mission Loop
+            self.bridge = Bridge(ip) 
             self.bridge.connect() # Press button on bridge if first run
             self._is_connected = True
             logger.info(f"💡 HUE CONNECTED: {ip}")
@@ -48,18 +52,27 @@ class HueController:
             logger.warning("⚠️ Module 'phue' not installed. Lighting disabled.")
             self.enabled = False
         except Exception as e:
+            # Log the error but don't crash. Set cooldown.
             logger.error(f"❌ Hue Connection Failed: {e}")
-            self.enabled = False
+            self._last_failure_time = time.time()
+            self._is_connected = False
 
     def set_state(self, state):
         """
         Applies lighting mood based on Tactical Status.
         States: CRITICAL, WARNING, CONTACT, LOST, NORMAL
         """
-        if not self.enabled or not self.bridge: return
+        if not self.enabled: return
         
+        # Auto-reconnect check
+        if not self._is_connected:
+            self._connect()
+            if not self._is_connected: return
+
         try:
+            # Get lights (This is the network call that can timeout)
             lights = self.bridge.get_light_objects(mode='name')
+            
             for name in self.TARGET_LIGHTS:
                 if name in lights:
                     l = lights[name]
@@ -76,6 +89,9 @@ class HueController:
                         l.hue = 40000; l.saturation = 254; l.brightness = 100 
                     else:                    # ⚪ Warm White / Standard
                         l.hue = 25500; l.saturation = 254; l.brightness = 150
-        except Exception as e:
-            # Silent fail to not interrupt mission loop
-            pass
+                        
+        except Exception:
+            # SILENT FAIL: If lights timeout, do not print stack trace.
+            # Just mark failure time so we don't try again immediately.
+            self._last_failure_time = time.time()
+            self._is_connected = False
