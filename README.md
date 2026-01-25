@@ -188,6 +188,7 @@ We follow a lean Research & Development workflow focused on the **nightly** bran
     ```bash
     cp .env.example .env
     # Edit MQTT_BROKER=192.168.x.xx
+    # I can also provide you MQTT_BROKER= mqtt.securingskies.eu (need to ask for credentials and support TLS)
     ```
 -   **Environment:** Standard Python Virtual Environment.
     ```bash
