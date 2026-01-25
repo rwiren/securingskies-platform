@@ -187,7 +187,7 @@ We follow a lean Research & Development workflow focused on the **nightly** bran
 -   **Secrets:** We use a local `.env` file (not committed) for IP configuration.
     ```bash
     cp .env.example .env
-    # Edit MQTT_BROKER=192.168.1.100
+    # Edit MQTT_BROKER=192.168.x.xx
     ```
 -   **Environment:** Standard Python Virtual Environment.
     ```bash
