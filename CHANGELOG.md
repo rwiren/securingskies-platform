@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.9] - 2026-01-25 (The "Long Test Drive" Release)
+**Status:** RELEASE CANDIDATE
+**Focus:** Hardware Integration, Model Diversity, and Stability.
+
+### 🚀 Added
+- **MAVLink Bridge:** Native support for Pixhawk/ArduPilot telemetry via `drivers/mavlink.py`.
+- **Web Dashboard:** Real-time LeafletJS map server (`web/server.py`) for visual tracking.
+- **Simulator:** `sim_px4.py` for generating synthetic drone traffic over Vantaa.
+- **Model Support:** Verified support for `gemma2` (Tactical), `phi3.5` (Speed), and `gpt-4o` (Cloud).
+- **Metric Engine:** Scientific logging of Latency, Recall, and Hallucination rates (`outputs/auditor.py`).
+- **Test Protocols:** Added `docs/TESTCASES.md` and `docs/TEST_PLAN.md`.
+
+### ⚡ Improved
+- **GPS Logic:** strict thresholds (<1m = RTK, >5m = Poor) to prevent AI overconfidence.
+- **CLI:** Restored full help documentation and scientific standards text in `main.py`.
+- **Logging:** Silenced `LiteLLM` and `HTTPX` console noise for a cleaner tactical display.
+- **Architecture:** Decoupled `officer.py` from drivers to allow "Fail-Loud" debugging.
+
+### 🐛 Fixed
+- **Hallucinations:** Fixed logic where AI would invent visual contacts when sensor data was missing.
+- **Import Crash:** Resolved circular dependency between Core and Recorder.
+- **Persona Bug:** Fixed case-sensitivity issue causing AI to default to "Data Analyst".
+
 ## [0.9.8] - 2026-01-25
 ### Added
 - **Tactical Dashboard (Phase 3):** Real-time WebSocket map (`web/server.py`) using Flask & Leaflet.js.

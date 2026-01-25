@@ -1,165 +1,193 @@
 """
-SecuringSkies Platform - The Officer (Core Logic)
-=================================================
-Role: Fleet Manager & Intelligence Dispatcher
-Status: FINAL (Includes Drivers, Hue, Recorder, Auditor, GeoMath)
+SecuringSkies Platform - Ghost Commander (The Brain)
+====================================================
+Version: 0.9.9
+Date: 2026-01-25
+Author: Ghost Commander
+
+Role:
+  Core Intelligence Module.
+  - Ingests normalized JSON telemetry from the MQTT Bus.
+  - Maintains state of all tracked assets.
+  - Consults the AI Model (Ollama/OpenAI) for tactical analysis.
+  - Generates "SITREP" (Situation Report).
+
+Status: PRODUCTION (Synced with Outputs)
 """
 
-import time
 import json
 import logging
-import requests
-import os
-from rich.console import Console
-from rich.panel import Panel
+import time
+from typing import Dict, List, Optional
+from litellm import completion
 
-# 1. DRIVERS (Senses)
-from securingskies.drivers.autel import AutelDriver
-from securingskies.drivers.owntracks import OwnTracksDriver
-from securingskies.drivers.dronetag import DronetagDriver 
+# Internal Imports
+try:
+    from securingskies.utils.geo import calculate_distance_3d
+    # Importing output drivers exactly as they appear in your project
+    from securingskies.outputs.recorder import BlackBox      # <--- Verified Class Name
+    from securingskies.outputs.hue import HueController      # <--- Verified Class Name
+    from securingskies.outputs.auditor import TelemetryAuditor # <--- Verified Class Name
+except ImportError as e:
+    # Fail loudly if core components are missing
+    raise ImportError(f"Missing Core Component: {e}")
 
-# 2. OUTPUTS (Actions)
-from securingskies.outputs.recorder import BlackBox 
-from securingskies.outputs.hue import HueController
-from securingskies.outputs.auditor import TelemetryAuditor # <--- NEW
-
-# 3. UTILS (Math)
-from securingskies.utils.geo import calculate_distance # <--- NEW
-
+# Configure Logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("core.officer")
-console = Console()
 
 class GhostCommander:
-    STALE_THRESHOLD_SEC = 90
-    DEFAULT_OLLAMA_URL = "http://localhost:11434/api/generate"
-    # Hardcoded Home Base (from Legacy)
-    HOME_BASE = {"lat": 60.3195, "lon": 24.8310} 
-    
-    def __init__(self, ai_engine="ollama", model="llama3.1", 
-                 record_enabled=False, hue_enabled=False, metrics_enabled=False):
-        self.ai_engine = ai_engine
-        self.model = model
-        self.fleet = {} 
-        
-        # Init Stack
-        self.autel_driver = AutelDriver()
-        self.owntracks_driver = OwnTracksDriver()
-        self.dronetag_driver = DronetagDriver() 
-        self.recorder = BlackBox(enabled=record_enabled) 
-        self.hue = HueController(enabled=hue_enabled)
-        self.auditor = TelemetryAuditor(enabled=metrics_enabled) # <--- NEW
-        
-        self.debug_mode = False
-        self.track_traffic = False
-        self.prompt_shown_once = False
-        
-        logger.info(f"🦅 GhostCommander Initialized. Intelligence: {ai_engine.upper()}")
-
-    def process_traffic(self, topic, payload):
-        self.recorder.log(topic, payload)
-        try:
-            parsed_packets = None
-            if "thing/product" in topic:
-                parsed_packets = self.autel_driver.parse(topic, payload)
-            elif "owntracks" in topic:
-                parsed_packets = self.owntracks_driver.parse(topic, payload)
-            elif "dronetag" in topic:
-                parsed_packets = self.dronetag_driver.parse(topic, payload)
-
-            if parsed_packets:
-                if isinstance(parsed_packets, dict): packets = [parsed_packets]
-                else: packets = parsed_packets
-                for p in packets: self._update_fleet_state(p)
-        except Exception as e:
-            logger.error(f"Traffic Error: {e}")
-
-    def _update_fleet_state(self, asset_data):
-        tid = asset_data.get('tid', 'UNK')
-        if 'AI_EVENT' in asset_data.get('type', ''):
-            if self.track_traffic:
-                self.hue.set_state("CONTACT")
-                for ftid, record in self.fleet.items():
-                    if record['data'].get('type') == 'AIR':
-                        record['data']['sightings'] = asset_data.get('sightings')
-        else:
-            self.fleet[tid] = {'data': asset_data, 'last_seen': time.time()}
-
-    def generate_sitrep(self, persona="analyst", show_prompt=False):
-        prompts = []
-        now = time.time()
-        hue_status = "NORMAL"
-        
-        # Find Pilot (RW) for distance calculations
-        pilot_pos = self.HOME_BASE
-        if 'RW' in self.fleet:
-            pilot_pos = self.fleet['RW']['data']
-
-        for tid, record in self.fleet.items():
-            data = record['data']
-            age = now - record['last_seen']
-            
-            if age > self.STALE_THRESHOLD_SEC:
-                prompts.append(f"Asset: {tid} | Status: SIGNAL LOST ({int(age)}s ago)")
-                hue_status = "LOST"
-                continue
-
-            # DISTANCE MATH (Legacy Feature)
-            dist_home = int(calculate_distance(data, self.HOME_BASE))
-            dist_pilot = int(calculate_distance(data, pilot_pos))
-            dist_str = f" | Dist: {dist_home}m (Home), {dist_pilot}m (Pilot)"
-
-            status_str = f"Asset: {tid} | Type: {data.get('type')} | Status: {data.get('mode', 'Active')}"
-            batt_str = f" | BATT: {data.get('batt', 'UNK')}%"
-            gps_str = f" | GPS: {data.get('nav', 'GPS')} ({data.get('acc', 0)}m)"
-            
-            vis_str = ""
-            if 'sightings' in data:
-                vis_str = f" | 👁️ VISUAL: {data['sightings']}"
-                hue_status = "CONTACT"
-
-            prompts.append(f"{status_str}{batt_str}{gps_str}{dist_str}{vis_str}")
-
-        self.hue.set_state(hue_status)
-
-        if not prompts: return "Status: Waiting..."
-
-        # Query AI & Audit
-        start = time.time()
-        response = self._query_ai(prompts, persona, show_prompt)
-        
-        # Log Performance Metrics
-        self.auditor.audit(self.model, start, prompts, response) # <--- NEW
-        
-        return response
-
-    def _query_ai(self, context_list, persona, show_prompt):
-        # (Same AI logic as before)
-        system_prompt = f"""
-        You are a Tactical Officer ({persona.upper()}).
-        Input is raw telemetry. Output a Concise Situation Report.
-        
-        RULES:
-        1. If "RTK-FIX" or "0.1m" -> GPS is GOOD (RTK).
-        2. If "SIGNAL LOST" -> Report immediately.
-        3. If "Human" detected -> Report CONTACT.
-        
-        DATA:
-        {chr(10).join(context_list)}
+    def __init__(self, model_name: str = "llama3.1", use_cloud: bool = False, 
+                 record_enabled: bool = False, hue_enabled: bool = False, metrics_enabled: bool = False):
         """
+        Initialize the AI Tactical Officer.
+        """
+        self.model = model_name
+        self.provider = "openai" if use_cloud else "ollama"
+        self.telemetry_buffer = {}  # The "Memory" of the track table
+        self.track_traffic = False
+        self.debug_mode = False
         
-        if show_prompt and not self.prompt_shown_once:
-            console.print(Panel(system_prompt, title="SYSTEM PROMPT (DEBUG)", style="dim"))
-            self.prompt_shown_once = True
+        # Initialize Outputs (Using your existing drivers)
+        self.recorder = BlackBox(enabled=record_enabled) if record_enabled else None
+        self.hue = HueController(enabled=hue_enabled) if hue_enabled else None
+        self.auditor = TelemetryAuditor(enabled=metrics_enabled) if metrics_enabled else None
         
+        # Confirm subsystem activation
+        if self.recorder: logger.info("🔴 RECORDER: ACTIVE")
+        if self.auditor: logger.info("📊 METRICS: ACTIVE")
+            
+        logger.info(f"🦅 GhostCommander Initialized. Intelligence: {self.provider.upper()} ({self.model})")
+
+    def process_traffic(self, topic: str, payload: bytes):
+        """
+        Ingest MQTT messages, parse JSON, and update the Tactical Map.
+        This is the method main.py calls.
+        """
         try:
-            if self.ai_engine == "openai":
-                from openai import OpenAI
-                client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-                res = client.chat.completions.create(model="gpt-4o", messages=[{"role": "system", "content": system_prompt}])
-                return res.choices[0].message.content
+            # 1. Parse Data safely
+            if isinstance(payload, bytes):
+                payload_str = payload.decode("utf-8")
+                data = json.loads(payload_str)
             else:
-                payload = {"model": self.model, "prompt": "Analyze.", "system": system_prompt, "stream": False}
-                res = requests.post(self.DEFAULT_OLLAMA_URL, json=payload, timeout=10)
-                return res.json()['response']
-        except Exception as e: return f"Intelligence Offline: {e}"
+                data = payload 
+
+            # Handle nested data structures common in telemetry
+            if "data" in data: data = data["data"]
+            
+            # 2. Extract Key Fields
+            tid = data.get("tid", "UNK")
+            
+            # 3. Update Memory
+            self.telemetry_buffer[tid] = data
+            
+            # 4. Trigger Hardware Outputs
+            if self.hue:
+                # Map topics to Hue States (using set_state("WARNING") etc.)
+                if "px4" in str(topic) or "dronetag" in str(topic): 
+                    self.hue.set_state("WARNING") # Orange
+                elif "owntracks" in str(topic): 
+                    self.hue.set_state("CONTACT") # Blue
+            
+            # 5. Record to Disk
+            if self.recorder: 
+                self.recorder.log(topic, data) # <--- Calls 'log' (Your API)
+
+            if self.debug_mode: 
+                print(f"DEBUG: Updated {tid}")
+
+        except Exception as e:
+            if self.debug_mode: logger.error(f"Traffic Parse Error: {e}")
+
+    def generate_sitrep(self, persona: str = "PILOT", show_prompt: bool = False) -> str:
+        """
+        Generates the text report by sending current memory to the AI.
+        Called by main.py loop.
+        """
+        start_time = time.time()
+        
+        # 1. Construct the Tactical Context
+        system_prompt = self._get_system_prompt(persona)
+        user_prompt = self._format_telemetry_buffer()
+        
+        if show_prompt:
+            logger.info("\n--- SYSTEM PROMPT ---\n" + system_prompt)
+            logger.info("\n--- USER PROMPT ---\n" + user_prompt)
+
+        # 2. Execute Inference
+        try:
+            response = completion(
+                model=f"{self.provider}/{self.model}", 
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                max_tokens=150,  # Keep it concise
+                temperature=0.3  # Low creativity, high factual accuracy
+            )
+            
+            result_text = response.choices[0].message.content.strip()
+            
+            # 3. Scientific Metrics
+            if self.auditor:
+                # Pass a list of raw prompt strings for recall calculation
+                raw_lines = user_prompt.split('\n')
+                audit_log = self.auditor.audit(self.model, start_time, raw_lines, result_text)
+                if audit_log: print(f"\n{audit_log}") 
+            
+            return result_text
+
+        except Exception as e:
+            logger.error(f"❌ AI INFERENCE FAILED: {e}")
+            return "SITREP: SYSTEM ERROR. AI UNAVAILABLE."
+
+    def _get_system_prompt(self, persona: str) -> str:
+        """Selects the engagement rules based on the chosen Persona."""
+        
+        base_rules = (
+            "GPS QUALITY STANDARDS:\n"
+            "- Accuracy < 1.0m: Report as 'EXCELLENT (RTK)'.\n"
+            "- Accuracy 1m - 5m: Report as 'ACCEPTABLE'.\n"
+            "- Accuracy > 5m: Report as 'POOR / COARSE'. WARN THE PILOT.\n"
+            "- If 'SIGNAL LOST': Report immediately.\n\n"
+            "VISUAL RULES:\n"
+            "- STRICT: Do NOT mention 'Contact' or 'Humans' unless the input explicitly says 'VISUAL'.\n"
+            "- If no visual data exists, assume the sensor is BLIND. State: 'Sensors Blind'.\n"
+        )
+
+        if persona == "PILOT":
+            return (
+                "You are a Tactical Officer (PILOT).\n"
+                "Input is raw telemetry. Output a Concise Situation Report.\n"
+                "RULES:\n" + base_rules
+            )
+        elif persona == "COMMANDER":
+            return (
+                "You are the Incident Commander.\n"
+                "Input is fleet telemetry. Output Strategic Orders and Risk Assessment.\n"
+                "RULES:\n" + base_rules
+            )
+        else:
+            return f"You are a Data Analyst. Summarize the JSON input.\n{base_rules}"
+
+    def _format_telemetry_buffer(self) -> str:
+        """Converts the entire memory state into a string for the AI."""
+        if not self.telemetry_buffer:
+            return "DATA: No Active Telemetry."
+            
+        lines = []
+        for tid, data in self.telemetry_buffer.items():
+            acc = data.get('acc', 10)
+            
+            # Calculate distance to home (mockup fixed point for now)
+            # Ensure calculate_distance_3d is available via import
+            dist_home = int(calculate_distance_3d(data.get('lat'), data.get('lon'), data.get('alt'), 60.3195, 24.8310, 115))
+            
+            visuals = f"VISUAL: {data['visual']}" if "visual" in data else "No Visual Data"
+            
+            lines.append(
+                f"Asset: {tid} | Type: {data.get('type', 'GND')} | "
+                f"BATT: {data.get('batt', 0)}% | GPS Acc: {acc}m | "
+                f"Dist: {dist_home}m (Home) | {visuals}"
+            )
+        return "\n".join(lines)
