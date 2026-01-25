@@ -131,7 +131,7 @@ python3 securingskies/main.py --replay logs/mission_20260124_192621.jsonl --jump
 | | `--cloud` | Use OpenAI GPT-4o (Smarter, costs money) instead of local Ollama. |
 | | `--model [NAME]` | Local LLM Model Name. Default: `llama3.1`. |
 | **Output** | `--voice` | Enables Text-to-Speech (MacOS `say` command). |
-| | `--voice_id [ID]` | Selects the system voice. Default: `Satu`. |
+| | `--voice_id [ID]` | Selects the system voice. Default: `Satu` (Finnish/English). |
 | | `--hue` | Enables Philips Hue integration (Blue=Contact, Red=Lost). |
 | **Logging** | `--record` | Saves a `logs/mission_YYYYMMDD.jsonl` file (Recommended). |
 | | `--metrics` | Enables Scientific Accuracy Logging (`logs/metrics_*.csv`). |
