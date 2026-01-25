@@ -1,16 +1,17 @@
 # 🦅 SecuringSkies Platform
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-v0.9.8-green.svg)](#)
-[![Status](https://img.shields.io/badge/Status-Operational-success.svg)](#)
+[![Version](https://img.shields.io/badge/Version-v0.9.9-success.svg)](#)
+[![Wiki](https://img.shields.io/badge/Docs-Wiki-blueviolet.svg)](https://github.com/rwiren/securingskies-platform/wiki)
+[![Status](https://img.shields.io/badge/Status-Field_Proven-success.svg)](https://github.com/rwiren/securingskies-platform/wiki/Field%E2%80%90Reports)
 [![Python](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](#)
 [![Code Style](https://img.shields.io/badge/Code%20Style-Black-000000.svg)](https://github.com/psf/black)
 
-**Status:** PRODUCTION (Modular Enterprise Architecture)  
-**Intelligence:** Neural (Ollama/OpenAI) + Deterministic (RTK/Telemetry)  
-**Legacy Parity:** 100% (All features from `v47` restored)
+**Status:** FIELD PROVEN (Validated in Operation "Sibbo Gauntlet")  
+**Intelligence:** Neural (Llama 3.1 / Gemma 2) + Deterministic (RTK/Telemetry)  
+**Documentation:** [**Read the Field Reports & Benchmarks on the Wiki**](https://github.com/rwiren/securingskies-platform/wiki)
 
-The **SecuringSkies Platform** is an Autonomous Ground Control Station (AGCS) designed to fuse data from heterogeneous sources (Drones, Ground Assets, Remote ID) into a single, AI-analyzed tactical picture.
+The **SecuringSkies Platform** is an Autonomous Ground Control Station (AGCS) designed to fuse data from heterogeneous sources (Autel Drones, Ground Assets, Remote ID) into a single, AI-analyzed tactical picture.
 
 ---
 
@@ -22,11 +23,12 @@ The **SecuringSkies Platform** is an Autonomous Ground Control Station (AGCS) de
   - [🚀 Quick Start](#-quick-start)
     - [1. The "Ghost Commander" (Live Mission)](#1-the-ghost-commander-live-mission)
     - [2. The "Time Machine" (Replay)](#2-the-time-machine-replay)
-  - [📡 Telemetry Standards](#-telemetry-standards)
-  - [💡 Operational Flags](#-operational-flags)
-  - [🛡 License \& Citation](#-license--citation)
+  - [🧪 Field Validation](#-field-validation)
+  - [🛡 License & Citation](#-license--citation)
   - [🤝 How to Contribute](#-how-to-contribute)
+
 ---
+
 
 ## 🏛️ Architectural Overview
 
@@ -140,6 +142,15 @@ python3 securingskies/main.py --replay logs/mission_20260124_192621.jsonl --jump
 | | `--speed [FLOAT]` | Playback speed multiplier (e.g., `2.0` for 2x). Default: `1.0`. |
 
 ---
+
+## 🧪 Field Validation
+
+This platform is not just theory. It has been validated in mixed urban/highway environments.
+
+* **Operation "Sibbo Gauntlet" (Jan 2026):** Verified Telemetry Fusion at highway speeds (117 km/h) and Drone Vision integration.
+* **Benchmarks:** Llama 3.1 (Tactical Pilot) vs Gemma 2 (Strategic Commander).
+
+> 📚 **See the [Wiki](https://github.com/rwiren/securingskies-platform/wiki) for full Mission Logs and Benchmarks.**
 
 ---
 

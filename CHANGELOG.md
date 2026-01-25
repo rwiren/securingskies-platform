@@ -5,28 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.9.9] - 2026-01-25 (The "Long Test Drive" Release)
-**Status:** RELEASE CANDIDATE
-**Focus:** Hardware Integration, Model Diversity, and Stability.
+
+## [0.9.9] - 2026-01-25 (The "Sibbo Gauntlet" Release)
+**Status:** FIELD PROVEN (Stable)
+**Focus:** Field Validation, Hardware Integration, and Driver Stabilization.
+
+### 🚀 Validated (Field Operations)
+- **Operation "Sibbo Gauntlet":** Successful end-to-end validation of the AGCS in Vantaa/Sipoo.
+- **Fusion Engine:** Validated simultaneous tracking of Ground (OwnTracks), Air (Autel), and Vision AI assets.
+- **AI Personas:** Confirmed efficacy of **Llama 3.1** (Pilot) for tactical alerts and **Gemma 2** (Commander) for strategic reasoning.
+- **Stress Testing:** Validated system stability under "Ghost Wall" conditions (8+ vision targets).
+
+### 🚑 Field Hotfixes (Critical)
+- **Null GPS Crash:** Fixed `TypeError` in `geo.py` when drones initialize with `lat: null` (v0.9.9e).
+- **Ghost Assets:** Added aggregation logic to `officer.py` to merge Autel Controller and UAV streams (v0.9.9d).
+- **Speed Units:** Fixed logic where AI reported moving cars as "Stationary" by converting OwnTracks `km/h` to `m/s` (v0.9.9f).
+- **Battery Glitch:** Added safety checks for `0%` battery reports from telemetry signal loss.
 
 ### 🚀 Added
 - **MAVLink Bridge:** Native support for Pixhawk/ArduPilot telemetry via `drivers/mavlink.py`.
 - **Web Dashboard:** Real-time LeafletJS map server (`web/server.py`) for visual tracking.
-- **Simulator:** `sim_px4.py` for generating synthetic drone traffic over Vantaa.
-- **Model Support:** Verified support for `gemma2` (Tactical), `phi3.5` (Speed), and `gpt-4o` (Cloud).
-- **Metric Engine:** Scientific logging of Latency, Recall, and Hallucination rates (`outputs/auditor.py`).
-- **Test Protocols:** Added `docs/TESTCASES.md` and `docs/TEST_PLAN.md`.
+- **Scientific Logging:** Added `mission_*.jsonl` (Black Box) and `metrics_*.csv` (Performance) streams.
+- **Instrument Flight Rules (IFR):** AI now analyzes Vertical Speed (`V-SPD`) and Horizontal Speed (`H-SPD`) for non-visual situational awareness.
 
 ### ⚡ Improved
-- **GPS Logic:** strict thresholds (<1m = RTK, >5m = Poor) to prevent AI overconfidence.
-- **CLI:** Restored full help documentation and scientific standards text in `main.py`.
-- **Logging:** Silenced `LiteLLM` and `HTTPX` console noise for a cleaner tactical display.
-- **Architecture:** Decoupled `officer.py` from drivers to allow "Fail-Loud" debugging.
+- **GPS Logic:** Strict thresholds (<1m = RTK, >5m = Poor) to prevent AI overconfidence.
+- **Console Hygiene:** Silenced `LiteLLM` and `HTTPX` noise for cleaner tactical display.
+- **Architecture:** Decoupled `officer.py` from drivers to allow "Fail-Loud" debugging during field ops.
 
 ### 🐛 Fixed
 - **Hallucinations:** Fixed logic where AI would invent visual contacts when sensor data was missing.
 - **Import Crash:** Resolved circular dependency between Core and Recorder.
-- **Persona Bug:** Fixed case-sensitivity issue causing AI to default to "Data Analyst".
+- **Persona Bug:** Fixed case-sensitivity issue causing AI to default to "D
 
 ## [0.9.8] - 2026-01-25
 ### Added

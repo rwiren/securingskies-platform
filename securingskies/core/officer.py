@@ -1,193 +1,159 @@
 """
 SecuringSkies Platform - Ghost Commander (The Brain)
 ====================================================
-Version: 0.9.9
-Date: 2026-01-25
-Author: Ghost Commander
-
-Role:
-  Core Intelligence Module.
-  - Ingests normalized JSON telemetry from the MQTT Bus.
-  - Maintains state of all tracked assets.
-  - Consults the AI Model (Ollama/OpenAI) for tactical analysis.
-  - Generates "SITREP" (Situation Report).
-
-Status: PRODUCTION (Synced with Outputs)
+Version: 0.9.9f (Instrument Flight Rules - IFR)
+Status: PRODUCTION - FULL TELEMETRY
 """
 
 import json
 import logging
 import time
-from typing import Dict, List, Optional
 from litellm import completion
 
-# Internal Imports
 try:
     from securingskies.utils.geo import calculate_distance_3d
-    # Importing output drivers exactly as they appear in your project
-    from securingskies.outputs.recorder import BlackBox      # <--- Verified Class Name
-    from securingskies.outputs.hue import HueController      # <--- Verified Class Name
-    from securingskies.outputs.auditor import TelemetryAuditor # <--- Verified Class Name
+    from securingskies.outputs.recorder import BlackBox
+    from securingskies.outputs.hue import HueController
+    from securingskies.outputs.auditor import TelemetryAuditor
 except ImportError as e:
-    # Fail loudly if core components are missing
     raise ImportError(f"Missing Core Component: {e}")
 
-# Configure Logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("core.officer")
 
 class GhostCommander:
     def __init__(self, model_name: str = "llama3.1", use_cloud: bool = False, 
                  record_enabled: bool = False, hue_enabled: bool = False, metrics_enabled: bool = False):
-        """
-        Initialize the AI Tactical Officer.
-        """
         self.model = model_name
         self.provider = "openai" if use_cloud else "ollama"
-        self.telemetry_buffer = {}  # The "Memory" of the track table
-        self.track_traffic = False
+        self.telemetry_buffer = {}
+        self._last_shown_persona = None
         self.debug_mode = False
         
-        # Initialize Outputs (Using your existing drivers)
         self.recorder = BlackBox(enabled=record_enabled) if record_enabled else None
         self.hue = HueController(enabled=hue_enabled) if hue_enabled else None
         self.auditor = TelemetryAuditor(enabled=metrics_enabled) if metrics_enabled else None
         
-        # Confirm subsystem activation
         if self.recorder: logger.info("🔴 RECORDER: ACTIVE")
         if self.auditor: logger.info("📊 METRICS: ACTIVE")
-            
         logger.info(f"🦅 GhostCommander Initialized. Intelligence: {self.provider.upper()} ({self.model})")
 
     def process_traffic(self, topic: str, payload: bytes):
-        """
-        Ingest MQTT messages, parse JSON, and update the Tactical Map.
-        This is the method main.py calls.
-        """
         try:
-            # 1. Parse Data safely
             if isinstance(payload, bytes):
-                payload_str = payload.decode("utf-8")
-                data = json.loads(payload_str)
+                data = json.loads(payload.decode("utf-8"))
             else:
                 data = payload 
 
-            # Handle nested data structures common in telemetry
-            if "data" in data: data = data["data"]
+            if "data" in data and isinstance(data["data"], dict): 
+                data = data["data"]
             
-            # 2. Extract Key Fields
-            tid = data.get("tid", "UNK")
+            # --- NORMALIZATION ---
             
-            # 3. Update Memory
-            self.telemetry_buffer[tid] = data
-            
-            # 4. Trigger Hardware Outputs
-            if self.hue:
-                # Map topics to Hue States (using set_state("WARNING") etc.)
-                if "px4" in str(topic) or "dronetag" in str(topic): 
-                    self.hue.set_state("WARNING") # Orange
-                elif "owntracks" in str(topic): 
-                    self.hue.set_state("CONTACT") # Blue
-            
-            # 5. Record to Disk
-            if self.recorder: 
-                self.recorder.log(topic, data) # <--- Calls 'log' (Your API)
+            # Case A: Autel Controller
+            if "drone_list" in data:
+                for drone in data["drone_list"]:
+                    tid = f"AUTEL_UAV"
+                    
+                    new_lat = drone.get("latitude")
+                    new_lon = drone.get("longitude")
+                    current_record = self.telemetry_buffer.get(tid, {})
+                    final_lat = new_lat if (new_lat and abs(new_lat) > 1) else current_record.get("lat", 0.0)
+                    final_lon = new_lon if (new_lon and abs(new_lon) > 1) else current_record.get("lon", 0.0)
 
-            if self.debug_mode: 
-                print(f"DEBUG: Updated {tid}")
+                    if tid not in self.telemetry_buffer: self.telemetry_buffer[tid] = {}
+                    self.telemetry_buffer[tid].update({
+                        "tid": tid,
+                        "type": "UAV",
+                        "lat": final_lat,
+                        "lon": final_lon,
+                        "alt": drone.get("height", 0),
+                        "batt": drone.get("battery", {}).get("capacity_percent", 0),
+                        # NEW: Speed Metrics
+                        "speed": drone.get("horizontal_speed", 0),
+                        "v_speed": drone.get("vertical_speed", 0),
+                        "acc": 0.1 if drone.get("position_state", {}).get("is_fixed") == 2 else 5.0
+                    })
+                    
+                    if self.telemetry_buffer[tid].get("acc") == 0.1:
+                         if "CONTACT" not in self.telemetry_buffer[tid].get("visual", ""):
+                             self.telemetry_buffer[tid]["visual"] = "RTK LOCKED"
+
+            # Case B: Autel Vision
+            elif "obj_cnt" in data and "objs" in data:
+                tid = "AUTEL_UAV"
+                if tid in self.telemetry_buffer:
+                    count = data.get("obj_cnt", 0)
+                    if count > 0:
+                        self.telemetry_buffer[tid]["visual"] = f"⚠️ CONTACT: {count} OBJECTS"
+                        if self.hue: self.hue.set_state("CRITICAL")
+
+            # Case C: OwnTracks
+            elif "tid" in data:
+                tid = data.get("tid")
+            # MAP 'vel' (km/h) to 'speed' (m/s) for the AI
+                data["speed"] = data.get("vel", 0) / 3.6
+                self.telemetry_buffer[tid] = data
+                if self.hue and "owntracks" in str(topic):
+                    self.hue.set_state("CONTACT")
+
+            if self.recorder: self.recorder.log(topic, data) 
 
         except Exception as e:
             if self.debug_mode: logger.error(f"Traffic Parse Error: {e}")
 
     def generate_sitrep(self, persona: str = "PILOT", show_prompt: bool = False) -> str:
-        """
-        Generates the text report by sending current memory to the AI.
-        Called by main.py loop.
-        """
         start_time = time.time()
-        
-        # 1. Construct the Tactical Context
         system_prompt = self._get_system_prompt(persona)
         user_prompt = self._format_telemetry_buffer()
         
         if show_prompt:
-            logger.info("\n--- SYSTEM PROMPT ---\n" + system_prompt)
+            if self._last_shown_persona != persona:
+                logger.info("\n--- SYSTEM PROMPT ---\n" + system_prompt)
+                self._last_shown_persona = persona
             logger.info("\n--- USER PROMPT ---\n" + user_prompt)
 
-        # 2. Execute Inference
         try:
             response = completion(
                 model=f"{self.provider}/{self.model}", 
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                max_tokens=150,  # Keep it concise
-                temperature=0.3  # Low creativity, high factual accuracy
+                messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
+                max_tokens=150, temperature=0.3
             )
-            
             result_text = response.choices[0].message.content.strip()
-            
-            # 3. Scientific Metrics
-            if self.auditor:
-                # Pass a list of raw prompt strings for recall calculation
-                raw_lines = user_prompt.split('\n')
-                audit_log = self.auditor.audit(self.model, start_time, raw_lines, result_text)
-                if audit_log: print(f"\n{audit_log}") 
-            
+            if self.auditor: self.auditor.audit(self.model, start_time, user_prompt.split('\n'), result_text)
             return result_text
-
         except Exception as e:
-            logger.error(f"❌ AI INFERENCE FAILED: {e}")
             return "SITREP: SYSTEM ERROR. AI UNAVAILABLE."
 
     def _get_system_prompt(self, persona: str) -> str:
-        """Selects the engagement rules based on the chosen Persona."""
-        
         base_rules = (
-            "GPS QUALITY STANDARDS:\n"
-            "- Accuracy < 1.0m: Report as 'EXCELLENT (RTK)'.\n"
-            "- Accuracy 1m - 5m: Report as 'ACCEPTABLE'.\n"
-            "- Accuracy > 5m: Report as 'POOR / COARSE'. WARN THE PILOT.\n"
-            "- If 'SIGNAL LOST': Report immediately.\n\n"
-            "VISUAL RULES:\n"
-            "- STRICT: Do NOT mention 'Contact' or 'Humans' unless the input explicitly says 'VISUAL'.\n"
-            "- If no visual data exists, assume the sensor is BLIND. State: 'Sensors Blind'.\n"
+            "REPORTING RULES:\n"
+            "- If Vertical Speed > 0.5: Report 'CLIMBING'. If < -0.5: Report 'DESCENDING'.\n"
+            "- If Speed > 1.0: Report 'MOVING'.\n"
+            "- Calculate estimated time to home if moving.\n"
+            "- Battery < 20%: WARN CRITICAL.\n"
         )
-
-        if persona == "PILOT":
-            return (
-                "You are a Tactical Officer (PILOT).\n"
-                "Input is raw telemetry. Output a Concise Situation Report.\n"
-                "RULES:\n" + base_rules
-            )
-        elif persona == "COMMANDER":
-            return (
-                "You are the Incident Commander.\n"
-                "Input is fleet telemetry. Output Strategic Orders and Risk Assessment.\n"
-                "RULES:\n" + base_rules
-            )
-        else:
-            return f"You are a Data Analyst. Summarize the JSON input.\n{base_rules}"
+        if persona == "COMMANDER": 
+            return f"You are the Flight Commander. Analyze dynamics (Speed/Alt/Batt). Provide Strategic Outlook.\n{base_rules}"
+        return f"Tactical Pilot. Concise Metrics.\n{base_rules}"
 
     def _format_telemetry_buffer(self) -> str:
-        """Converts the entire memory state into a string for the AI."""
-        if not self.telemetry_buffer:
-            return "DATA: No Active Telemetry."
-            
+        if not self.telemetry_buffer: return "DATA: No Active Telemetry."
         lines = []
         for tid, data in self.telemetry_buffer.items():
             acc = data.get('acc', 10)
+            lat = data.get('lat')
+            lon = data.get('lon')
+            dist_home = 0
+            if lat and lon and isinstance(lat, (int, float)):
+                try: dist_home = int(calculate_distance_3d(lat, lon, data.get('alt', 0), 60.3195, 24.8310, 115))
+                except: pass
             
-            # Calculate distance to home (mockup fixed point for now)
-            # Ensure calculate_distance_3d is available via import
-            dist_home = int(calculate_distance_3d(data.get('lat'), data.get('lon'), data.get('alt'), 60.3195, 24.8310, 115))
-            
-            visuals = f"VISUAL: {data['visual']}" if "visual" in data else "No Visual Data"
-            
+            # THE UPGRADE: Full Instrument Panel
             lines.append(
-                f"Asset: {tid} | Type: {data.get('type', 'GND')} | "
-                f"BATT: {data.get('batt', 0)}% | GPS Acc: {acc}m | "
-                f"Dist: {dist_home}m (Home) | {visuals}"
+                f"Asset: {tid} | BATT: {data.get('batt')}% | "
+                f"ALT: {data.get('alt', 0):.1f}m | "
+                f"H-SPD: {data.get('speed', 0):.1f}m/s | V-SPD: {data.get('v_speed', 0):.1f}m/s | "
+                f"Dist: {dist_home}m | {data.get('visual', 'No Visual')}"
             )
         return "\n".join(lines)
