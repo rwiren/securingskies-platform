@@ -57,6 +57,7 @@ securingskies-platform/
 │   ├── drivers/                # -> The "Ears" (Hardware Abstraction Layer)
 │   │   ├── autel.py            #    (Autel Enterprise V3 + RTK Decoder)
 │   │   ├── dronetag.py         #    (Remote ID ASTM F3411 Parser)
+│   │   └── mavlink.py          #    (MAVlink opensource drone protocol)
 │   │   └── owntracks.py        #    (Ground Asset & Pilot Tracker)
 │   ├── outputs/                # -> The "Voice" (User Interface)
 │   │   ├── hue.py              #    (Philips Hue Lighting Controller)
