@@ -161,7 +161,7 @@ This platform is not just theory. It has been validated in mixed urban/highway e
 ### Citation
 If you use this dataset, architecture, or tooling in your research, please cite:
 
-> Wiren, Richard. (2026). *SecuringSkies: Autonomous Multi-Agent Fusion Platform* [Software]. https://github.com/rwiren/securingskies-platform
+> Wiren, Richard. (2026). *SecuringSkies: Autonomous Multi-Agent Fusion Platform*.
 
 See [CITATION.cff](https://github.com/rwiren/securingskies-platform/blob/main/CITATION.cff) for BibTeX format.
 
