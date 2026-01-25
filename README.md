@@ -163,7 +163,7 @@ If you use this dataset, architecture, or tooling in your research, please cite:
 
 > Wiren, Richard. (2026). *SecuringSkies: Autonomous Multi-Agent Fusion Platform* [Software]. https://github.com/rwiren/securingskies-platform
 
-See `CITATION.cff` for BibTeX format.
+See [CITATION.cff](https://github.com/rwiren/securingskies-platform/blob/main/CITATION.cff) for BibTeX format.
 
 ---
 
