@@ -33,9 +33,9 @@ The **SecuringSkies Platform** is an AI-driven sensor fusion engine that turns r
 ## 🏛️ Architectural Overview
 
 This system functions as a publish-subscribe hub via MQTT, fusing telemetry from:
-1.  **UAS Remote ID (ASTM F3411)** via Dronetag Cloud Bridge.
+1.  **UAS Remote ID (ASTM F3411)** over 4G via Dronetag Cloud Bridge and (tls) encrypted forwarding.
 2.  **Proprietary UAV Telemetry** (Autel Enterprise) via direct locally hosted secured OSD Bridge (RTK-Enabled).
-3.  **Mobile Ground Assets** (OwnTracks) via encrypted mesh network.
+3.  **Mobile Ground Assets** (OwnTracks) also via end to end encrypted network.
 
 ### Core Capabilities
 * **Real-time RTK Decoding:** Parses GNSS state bitmasks for centimeter-level accuracy (`RTK-FIX` vs `RTK-FLOAT`).
