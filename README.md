@@ -11,7 +11,7 @@
 **Intelligence:** Neural (Llama 3.1 / Gemma 2) + Deterministic (RTK/Telemetry)  
 **Documentation:** [**Read the Field Reports & Benchmarks on the Wiki**](https://github.com/rwiren/securingskies-platform/wiki)
 
-The **SecuringSkies Platform** is an Autonomous Ground Control Station (AGCS) designed to fuse data from heterogeneous sources (Drones, Ground Assets, Remote ID and more) into a single, AI-analyzed tactical picture.
+The **SecuringSkies Platform** is an AI-driven sensor fusion engine that turns raw telemetry (Air/Ground/RF) into a Vocal Co-Pilot. It provides hands-free, real-time situational awareness and precise logging for field engineers conducting sensor validation and calibration as well as an Autonomous Ground Control Station (AGCS) designed to fuse data from heterogeneous sources (Drones, Ground Assets, Remote ID and more) into a single, AI-analyzed tactical picture, and proovide Situational Awereness, ie. SITREP report based on stakeholder needs.
 
 ---
 
