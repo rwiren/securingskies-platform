@@ -38,9 +38,9 @@ This system functions as a publish-subscribe hub via MQTT, fusing telemetry from
 3.  **Mobile Ground Assets** (OwnTracks) also via end to end encrypted networking.
 
 ### Core Capabilities
-* **Real-time RTK Decoding:** Parses GNSS state bitmasks for centimeter-level accuracy (`RTK-FIX` vs `RTK-FLOAT`).
+* **Real-time RTK Decoding:** Parses GNSS state bitmasks for centimeter-level accuracy (`RTK-FIX` vs `RTK-FLOAT` or only `GNSS`).
 * **Multi-Agent Sensor Fusion:** Combines Ground + Air + Computer Vision streams into a unified fleet state.
-* **LLM-driven Situational Awareness:** Uses OpenAI GPT-4o or Ollama Llama3.1 to generate "Voice of God" briefings based on forensic data.
+* **LLM-driven Situational Awareness:** Uses OpenAI GPT-4o or Ollama Llama3.1 to generate "Voice of Persona" briefings based on forensic data.
 * **Black Box Logging:** Saves forensic evidence in `jsonl` standard for mission replay.
 * **Latency Watchdog:** Monitors queue depth to prevent "Time Travel" reporting.
 
@@ -188,7 +188,7 @@ We follow a lean Research & Development workflow focused on the **nightly** bran
     ```bash
     cp .env.example .env
     # Edit MQTT_BROKER=192.168.x.xx
-    # I can also provide you MQTT_BROKER= mqtt.securingskies.eu (need to ask for credentials and support tls)
+    # I can also provide you MQTT_BROKER= mqtt.securingskies.eu (need to ask for credentials)
     ```
 -   **Environment:** Standard Python Virtual Environment.
     ```bash
