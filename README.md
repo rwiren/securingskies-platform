@@ -147,7 +147,7 @@ python3 securingskies/main.py --replay logs/mission_20260124_192621.jsonl --jump
 
 This platform is not just theory. It has been validated in mixed urban/highway environments.
 
-* **Operation "Sibbo Gauntlet" (Jan 2026):** Verified Telemetry Fusion at highway speeds (117 km/h) and Drone Vision integration.
+* **Operation "Sibbo Gauntlet" (Jan 2026):** Verified Telemetry Fusion at highway speeds (117 km/h) and Drone Vision integration in various target detection scenarious.
 * **Benchmarks:** Llama 3.1 (Tactical Pilot) vs Gemma 2 (Strategic Commander).
 
 > 📚 **See the [Wiki](https://github.com/rwiren/securingskies-platform/wiki) for full Mission Logs and Benchmarks.**
