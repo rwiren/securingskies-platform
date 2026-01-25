@@ -11,7 +11,7 @@
 **Intelligence:** Neural (Llama 3.1 / Gemma 2) + Deterministic (RTK/Telemetry)  
 **Documentation:** [**Read the Field Reports & Benchmarks on the Wiki**](https://github.com/rwiren/securingskies-platform/wiki)
 
-The **SecuringSkies Platform** is an Autonomous Ground Control Station (AGCS) designed to fuse data from heterogeneous sources (Autel Drones, Ground Assets, Remote ID, ie. Dronetags) into a single, AI-analyzed tactical picture.
+The **SecuringSkies Platform** is an Autonomous Ground Control Station (AGCS) designed to fuse data from heterogeneous sources (Drones, Ground Assets, Remote ID and more) into a single, AI-analyzed tactical picture.
 
 ---
 
