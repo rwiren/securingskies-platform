@@ -128,7 +128,7 @@ python3 securingskies/main.py --replay logs/mission_20260124_192621.jsonl --jump
 | | `--interval [SEC]` | Seconds between voice reports. Default: `45`. |
 | | `--traffic` | Enables AI Computer Vision tracking for Cars/Trucks. When not enabled the system still tracks High Value targets such as Humans and Drones by default.|
 | **Network** | `--ip [IP]` | MQTT Broker Address. Default: `192.168.192.100`. |
-| | `--port [PORT]` | MQTT Broker Port. Default: `1883`. |
+| | `--port [PORT]` | MQTT Broker Port. Default: `8883` (tls), however `1883` also supported if using encrypted networking.  |
 | | `--cloud` | Use OpenAI GPT-4o (Smarter, costs money) instead of local Ollama. |
 | | `--model [NAME]` | Local LLM Model Name. Default: `llama3.1`. |
 | **Output** | `--voice` | Enables Text-to-Speech (MacOS `say` command). |
