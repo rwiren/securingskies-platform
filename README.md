@@ -126,7 +126,7 @@ python3 securingskies/main.py --replay logs/mission_20260124_192621.jsonl --jump
 | :--- | :--- | :--- |
 | **Mission** | `--persona [NAME]` | AI Personality (`pilot`, `commander`, `analyst`). Default: `pilot`. |
 | | `--interval [SEC]` | Seconds between voice reports. Default: `45`. |
-| | `--traffic` | Enables AI Computer Vision tracking for Cars/Trucks. |
+| | `--traffic` | Enables AI Computer Vision tracking for Cars/Trucks. When not enabled the system still tracks High Value targets such as Humans and Drones by default.|
 | **Network** | `--ip [IP]` | MQTT Broker Address. Default: `192.168.192.100`. |
 | | `--port [PORT]` | MQTT Broker Port. Default: `1883`. |
 | | `--cloud` | Use OpenAI GPT-4o (Smarter, costs money) instead of local Ollama. |
