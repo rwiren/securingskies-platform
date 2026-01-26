@@ -33,3 +33,28 @@
 * **v0.9.9d:** Added `process_traffic` aggregation to fix "Asset UNK".
 * **v0.9.9e:** Added `NoneType` safety check in `geo.py` to fix crash.
 * **v0.9.9f:** Added `km/h -> m/s` conversion for OwnTracks.
+
+
+# 🛡️ SecuringSkies Test Protocol (SSTP)
+**Version:** v1.1.0 (Strategic Roadmap)
+**Date:** 2026-01-26
+**Status:** RELEASE CANDIDATE
+
+## 1. ToL (Test Object List) - The Components
+
+| ID | Object | Type | Verification Criteria | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| **ToL-01** | `core.officer` | Logic | **Semantic Labeling:** Distinguish GCS vs UAV. | 🟡 Pending TC-08 |
+| **ToL-02** | `core.officer` | KPI | **Dronetag Latency:** Glass-to-Glass calc. | 🟡 Field Test |
+| **ToL-03** | `core.officer` | KPI | **Autel Latency:** C2 Link calc. | ✅ Validated |
+| **ToL-04** | `drivers.adsb` | Future | **Civil Air:** Ingest SBS-1/JSON from `dump1090`. | 🗓️ Strategic |
+| **ToL-05** | `drivers.cyber` | Future | **SIEM:** Ingest OpenSearch hits as "Contacts". | 🗓️ Strategic |
+
+## 2. DoL (Demo Object List) - The Missions
+
+| ID | Scenario Name | Actors | Description | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| **DoL-A** | "The Latency Run" | Dronetag, Autel | **Thesis Core.** Comparative latency analysis. | 🗓️ This Week |
+| **DoL-B** | "The Twin-Sensor" | Autel + Dronetag | **Calibration.** Physical mounting of sensors. | 🗓️ This Week |
+| **DoL-C** | "The Glide Path" | ADS-B, Autel | **Safety.** Drone intersects airliner approach. | 🗓️ Q2 2026 |
+| **DoL-D** | "The Locked Shield" | OpenSearch, Officer | **Cyber.** SSH Brute Force triggers SITREP. | 🗓️ Q2 2026 |

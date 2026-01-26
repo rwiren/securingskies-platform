@@ -57,3 +57,30 @@
 - [ ] **Check:** AI reports "MOVING" (not "STATIONARY").
 
 **Status note :** PARTIALLY VALIDATED (Autel/Ground Complete, Fleet Pending)
+
+
+# 🧪 SecuringSkies v1.0.0 - Validation Protocols
+
+## 🛡️ CURRENT REGRESSION TESTS (v1.0 Release)
+*(Execute these tonight)*
+
+### 🔴 TC-07: "The Poison Pill" (Stability)
+- [ ] Inject `{"lat": null}` -> Confirm No Crash.
+
+### 🔴 TC-08: "Semantic Identity" (Labeling)
+- [ ] Replay Golden Sample -> Confirm `type: "Ground Station"` vs `type: "UAV"`.
+
+---
+
+## 🔭 STRATEGIC TESTS (Future/ADS-B)
+
+### 🔵 TC-13: "ADS-B Ingestion" (Civil Air)
+**Objective:** Verify integration with `adsb-research-grid`.
+- [ ] **Action:** Stream JSON from `dump1090-fa`.
+- [ ] **Check:** Flight `AY123` (Finnair) appears as `Type: Commercial Air`.
+- [ ] **Check:** Altitude `3000ft` is correctly normalized to meters (~914m).
+
+### 🔵 TC-14: "Cyber-Kinetic Convergence"
+**Objective:** Verify multi-domain logic.
+- [ ] **Action:** Simulate "Jamming" (Cyber Event) + "Drone Loss" (Kinetic Event).
+- [ ] **Check:** AI SITREP correlates: *"Signal lost due to probable jamming detected on Port 8883."*
