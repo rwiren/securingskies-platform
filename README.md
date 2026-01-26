@@ -40,7 +40,7 @@ This system functions as a publish-subscribe hub via MQTT, fusing telemetry from
 ### Core Capabilities
 * **Real-time RTK Decoding:** Parses GNSS state bitmasks for centimeter-level accuracy (`RTK-FIX` vs `RTK-FLOAT` or only `GNSS`).
 * **Multi-Agent Sensor Fusion:** Combines Ground + Air + Computer Vision streams into a unified fleet state.
-* **LLM-driven Situational Awareness:** Uses OpenAI GPT-4o or Ollama Llama3.1 to generate "Voice of Persona" briefings based on forensic data. Includes possibility to easily switch between models and "Prompts Persona´s" (Pilot, Commander and, Analyst) that can be self-optimized based on different use cases or stake holder needs. 
+* **LLM-driven Situational Awareness:** Uses OpenAI GPT-4o or Ollama Llama3.1 to generate "Voice of Persona" briefings based on forensic data. Includes possibility to easily switch between models and "Prompts Persona´s" (Pilot, Commander and, Analyst) that can be self-optimized based on different **Use Cases** or **Stakeholder needs**. 
 * **Black Box Logging:** Saves forensic evidence in `jsonl` standard for mission replay.
 * **Latency Watchdog:** Monitors queue depth to prevent "Time Travel" reporting.
 
