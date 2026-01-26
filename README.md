@@ -50,51 +50,51 @@ This system functions as a publish-subscribe hub via MQTT, fusing telemetry from
 
 ```plaintext
 securingskies-platform/
-├── securingskies/              # 🦅 THE CORE PLATFORM (The Agent)
-│   ├── main.py                 # -> The Entry Point (CLI & Bootloader)
-│   ├── core/                   # -> The "Brain"
-│   │   └── officer.py          #    (GhostCommander Logic & State Management)
-│   ├── drivers/                # -> The "Ears" (Hardware Abstraction Layer)
-│   │   ├── autel.py            #    (Autel Enterprise V3 + RTK Decoder)
-│   │   ├── dronetag.py         #    (Remote ID ASTM F3411 Parser)
-│   │   └── mavlink.py          #    (MAVlink opensource drone protocol)
-│   │   └── owntracks.py        #    (Ground Asset & Pilot Tracker)
-│   ├── outputs/                # -> The "Voice" (User Interface)
-│   │   ├── hue.py              #    (Philips Hue Lighting Controller)
-│   │   └── recorder.py         #    (Black Box JSONL Logger)
-│   │   └── auditor.py          #    (Scientific Metrics Engine)
-│   ├── integration/            # -> [Future] Connectors (InfluxDB, OpenSearch Writers)
-│   └── utils/                  # -> Math & Shared Helpers (Geo/Haversine)
+├── securingskies/              # 🦅 THE CORE PLATFORM
+│   ├── main.py                 # -> Internal Bootloader
+│   ├── core/                   # -> The "Brain" (Logic Unit)
+│   │   └── officer.py          #    (Ingestion, Normalization & AI)
+│   ├── outputs/                # -> The "Voice" (IO Subsystem)
+│   │   ├── auditor.py          #    (Scientific Metrics Engine)
+│   │   ├── recorder.py         #    (Black Box Logger)
+│   │   └── hue.py              #    (Philips Hue Bridge)
+│   └── utils/                  # -> Shared Libraries
+│       └── geo.py              #    (Geodesic Math)
 │
 ├── config/                     # ⚙️ CONFIGURATION
 │   ├── personas.json           # -> Standard System Prompts
-│   └── personas_v2.json        # -> DSPy Optimized Prompts ("The Golden Prompts")
+│   └── optimized_*.json        # -> Optimized DSPy Artifacts
 │
-├── logs/                       # 💾 MISSION DATA
-│   ├── mission_*.jsonl         # -> Raw Black Box Data (Forensic Evidence)
-│   └── metrics_*.csv           # -> Performance Report Cards
+├── docs/                       # 📘 KNOWLEDGE BASE
+│   ├── ARCHITECTURE.md         # -> System Design Document
+│   ├── TEST_PLAN.md            # -> TDD Strategy
+│   └── TESTCASES.md            # -> Field Validation Cases
 │
-├── ops/                        # 🏗️ INFRASTRUCTURE (DevOps)
-│   ├── stack/                  # -> Docker Compose (Mosquitto, Grafana, OpenSearch)
-│   └── systemd/                # -> System Service Files
+├── labs/                       # 🧪 RESEARCH & DEVELOPMENT
+│   ├── replay/                 # -> "Time Machine" (HITL Tools)
+│   │   └── replay_tool.py
+│   ├── optimizer/              # -> DSPy Prompt Optimization
+│   └── optimizer.py            # -> Training Entry Point
 │
-├── labs/                       # 🧪 R&D (The Sandbox)
-│   ├── replay/                 # -> "Time Machine" (Forensic Replay Tools)
-│   ├── optimizer/              # -> DSPy Prompt Training Scripts
-│   └── experiments/            # -> Prototype Code
+├── ops/                        # 🏗️ DEVOPS
+│   └── stack/                  # -> Docker Compose (Mosquitto/Grafana)
 │
-├── web/                        # 🌐 WEB DASHBOARD [Future]
+├── web/                        # 🌐 WEB DASHBOARD 
 │   ├── server.py               # -> Lightweight Web Server
 │   ├── static/                 # -> JS/CSS Assets
 │   └── templates/              # -> HTML Views
 │
-├── docs/                       # 📘 KNOWLEDGE BASE
-│   └── ARCHITECTURE.md         # -> Network Diagrams & Design Docs
+├── examples/                   # 🔬 VALIDATION DATA
+│   └── mixed_traffic_*.jsonl   # -> Golden Samples for HITL Replay
 │
+├── logs/                       # 💾 TELEMETRY (GitIgnored)
+│   └── ...                     #    (Local Mission Data)
+│
+├── main.py                     # 🚀 CLI ENTRY POINT
+└── requirements.txt            # -> Dependency Manifest
 └── archive/                    # 🏛️ THE MUSEUM
     └── legacy/                 # -> Deprecated Monoliths (v47.py)
 ```
-
 ---
 
 ## 🚀 Quick Start
