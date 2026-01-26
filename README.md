@@ -6,7 +6,7 @@
 [![Status](https://img.shields.io/badge/Status-Field_Proven-success.svg)](https://github.com/rwiren/securingskies-platform/wiki/Field%E2%80%90Reports)
 [![Python](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](#)
 [![Code Style](https://img.shields.io/badge/Code%20Style-Black-000000.svg)](https://github.com/psf/black)
-[![Release Date](https://img.shields.io/github/release-date/rwiren/securingskies-platform?style=flat&color=blueviolet)](https://github.com/rwiren/securingskies-platform/releases)
+[![Last Commit](https://img.shields.io/github/last-commit/rwiren/securingskies-platform?style=flat&color=blue)](https://github.com/rwiren/securingskies-platform/commits/main)
 
 **Status:** RELEASED v1.0.0 (Validated in Field Operation "Sibbo Gauntlet")  
 **Intelligence:** Neural (Llama 3.1 / Gemma 2) + Deterministic (RTK/Telemetry)  
