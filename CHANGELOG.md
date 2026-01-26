@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.9-patch1] - 2026-01-26
+### Fixed
+- **Identity Crisis:** Implemented Semantic Labeling to explicitly distinguish "Ground Station (GCS)" from "UAV".
+- **Hallucinations:** Added "Constitutional Guardrails" to the System Prompt to override stale few-shot examples.
+- **UI:** Fixed repeating System Prompt spam; added heartbeat dots (`.`) for better connection visibility.
+
+### Added
+- **KPI:** Real-time **Network Latency** calculation for Dronetag (ISO 8601 parsing).
+- **KPI:** **C2 Latency** calculation for Autel Smart Controller (Heartbeat analysis).
+- **Replay:** Validated HITL simulation speeds for post-mission analysis.
 
 ## [0.9.9] - 2026-01-25 (The "Sibbo Gauntlet" Release)
 **Status:** FIELD PROVEN (Stable)
