@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - 2026-01-26
+**Status:** RELEASE (Stable)
+
+### Added
+- **Architecture:** Implemented `officer.py` (Micro-Kernel) to replace legacy `drivers/` folder, reducing ingestion latency to <100ms.
+- **Protocol:** Adopted **SSTP v1.0** (SecuringSkies Test Protocol) compliant with IEEE 829.
+- **KPIs:** Added Network Latency (Glass-to-Glass) and C2 Latency calculation in `auditor.py`.
+- **Docs:** Added `docs/TECH_DEBT.md` to track architectural trade-offs.
+
+### Changed
+- **Logic:** Refactored Asset Identification to strictly separate "Ground Station (GCS)" from "UAV" based on metadata type.
+- **Safety:** Updated System Prompt to include "Constitutional Guardrails" (Regex overrides) for anti-hallucination.
+- **Units:** Standardized OwnTracks velocity from `km/h` to `m/s` for consistency with Physics Engine.
+
+### Fixed
+- **Stability:** Resolved `TypeError` in `geo.py` when telemetry contains `lat: null` (Verified via TC-07).
+- **Crash:** Fixed `NoneType` timestamp error in `labs/replay/replay_tool.py` when parsing corrupted logs.
+- **UI:** Suppressed repeating System Prompt spam in the console output.
+
+## [0.9.9 RC] - 2026-01-25
+**Status:** PRE-RELEASE (Field Proven)
+
+### Added
+- **Hardware:** Native support for Pixhawk/ArduPilot telemetry via `drivers/mavlink.py`.
+- **Visualization:** Real-time LeafletJS map server (`web/server.py`).
+- **Logging:** Added `mission_*.jsonl` (Black Box) and `metrics_*.csv` (Performance) streams.
+
+### Fixed
+- **Critical:** Fixed "Ghost Assets" bug where Autel Controller and UAV were reported as separate unknown entities.
+- **Critical:** Fixed AI reporting moving cars as "Stationary" due to unit mismatch.
+
 ## [0.9.9-patch1] - 2026-01-26
 ### Fixed
 - **Identity Crisis:** Implemented Semantic Labeling to explicitly distinguish "Ground Station (GCS)" from "UAV".

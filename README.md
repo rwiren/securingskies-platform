@@ -1,13 +1,13 @@
 # 🦅 SecuringSkies Platform
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-v0.9.9-success.svg)](#)
+[![Version](https://img.shields.io/badge/Version-v1.0.0-success.svg)](#)
 [![Wiki](https://img.shields.io/badge/Docs-Wiki-blueviolet.svg)](https://github.com/rwiren/securingskies-platform/wiki)
 [![Status](https://img.shields.io/badge/Status-Field_Proven-success.svg)](https://github.com/rwiren/securingskies-platform/wiki/Field%E2%80%90Reports)
 [![Python](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](#)
 [![Code Style](https://img.shields.io/badge/Code%20Style-Black-000000.svg)](https://github.com/psf/black)
 
-**Status:** FIELD PROVEN (Validated in Operation "Sibbo Gauntlet")  
+**Status:** RELEASED v1.0.0 (Validated in Operation "Sibbo Gauntlet")  
 **Intelligence:** Neural (Llama 3.1 / Gemma 2) + Deterministic (RTK/Telemetry)  
 **Documentation:** [**Read the Field Reports & Benchmarks on the Wiki**](https://github.com/rwiren/securingskies-platform/wiki)
 
@@ -28,7 +28,6 @@ The **SecuringSkies Platform** is an AI-driven sensor fusion engine that turns r
   - [🤝 How to Contribute](#-how-to-contribute)
 
 ---
-
 
 ## 🏛️ Architectural Overview
 
@@ -68,7 +67,8 @@ securingskies-platform/
 ├── docs/                       # 📘 KNOWLEDGE BASE
 │   ├── ARCHITECTURE.md         # -> System Design Document
 │   ├── TEST_PLAN.md            # -> TDD Strategy
-│   └── TESTCASES.md            # -> Field Validation Cases
+│   ├── TESTCASES.md            # -> Field Validation Cases
+│   └── TECH_DEBT.md            # -> Architectural Trade-offs
 │
 ├── labs/                       # 🧪 RESEARCH & DEVELOPMENT
 │   ├── replay/                 # -> "Time Machine" (HITL Tools)
@@ -91,10 +91,11 @@ securingskies-platform/
 │   └── ...                     #    (Local Mission Data)
 │
 ├── main.py                     # 🚀 CLI ENTRY POINT
-└── requirements.txt            # -> Dependency Manifest
+├── requirements.txt            # -> Dependency Manifest
 └── archive/                    # 🏛️ THE MUSEUM
     └── legacy/                 # -> Deprecated Monoliths (v47.py)
 ```
+
 ---
 
 ## 🚀 Quick Start

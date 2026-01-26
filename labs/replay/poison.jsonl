@@ -1,0 +1,4 @@
+{"topic": "dronetag/fail1", "ts": 1700000000, "data": "THIS_IS_NOT_JSON_IT_IS_GARBAGE_TEXT"}
+{"topic": "dronetag/fail2", "ts": 1700000001, "data": {"lat": null, "lon": null, "speed": 10, "timestamp": "2026-01-26T12:00:00Z"}}
+{"topic": "thing/product/fail3", "ts": 1700000002, "data": {"sn": "MISSING_KEYS_NO_GPS"}}
+{"topic": "dronetag/recovery", "ts": 1700000003, "data": {"lat": 60.1699, "lon": 24.9384, "speed": 5, "timestamp": "2026-01-26T12:00:05Z", "id": "RECOVERY_UNIT"}}
