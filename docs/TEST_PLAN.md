@@ -1,60 +1,47 @@
 # 🛡️ SecuringSkies Test Protocol (SSTP)
-**Version:** v0.9.9f (Field Proven)
-**Date:** 2026-01-25
-**Status:** PARTIALLY VALIDATED (Autel/Ground Complete, Dronetag and MAVlink field testing pending)
-
-## 1. ToL (Test Object List) - The Components
-*Atomic verification of individual drivers and modules.*
-
-| ID | Object | Type | Verification Criteria | Current Status |
-| :--- | :--- | :--- | :--- | :--- |
-| **ToL-01** | `drivers.autel` | Driver | Must parse `data.data` JSON and separate `UAV` (Orange) from `CTRL` (Cyan). | ✅ **Validated** (Run 5-7) |
-| **ToL-02** | `drivers.dronetag` | Driver | Must identify `RID` packets and extract GPS regardless of nesting. | ✅ **Stable** |
-| **ToL-03** | `drivers.owntracks` | Driver | Must accept HTTP/MQTT JSON and **normalize Speed (m/s)**. | ✅ **Validated** (Run 15-17) |
-| **ToL-04** | `drivers.mavlink` | Driver | Must connect to ArduPilot/PX4 via UDP. | ✅ **Active** |
-| **ToL-05** | `core.officer` | AI | Must output SITREP without "Negative Hallucinations" (blindness). | ✅ **Validated** (0 Hallucinations) |
-| **ToL-06** | `core.optimizer` | DSPy | Must auto-correct system prompts based on Auditor feedback. | ⏳ **Data Collected** (Ready for Lab) |
-| **ToL-07** | `outputs.hue` | HW | Must trigger RED/ORANGE on Hostile, CYAN on Pilot, BLUE on Guard. | ✅ **Validated** (Traffic Alert) |
-| **ToL-08** | `web.server` | UI | Must visualize all assets on Dark Mode Map via WebSocket. | ✅ **Validated** |
-
-## 2. DoL (Demo Object List) - The Missions
-*Integrated scenarios that prove business value to stakeholders.*
-
-| ID | Scenario Name | Actors | Description | Status |
-| :--- | :--- | :--- | :--- | :--- |
-| **DoL-A** | "The Ghost Walk" | OwnTracks, Officer | Ground Asset tracking. Verifies Voice reporting. | ✅ **PASS** |
-| **DoL-B** | "The Airspace Breach" | RID, Hue, Officer | Simulated Hostile. Verifies "RED ALERT" logic. | ✅ **PASS** |
-| **DoL-C** | "The Sibbo Drive" | OwnTracks, Llama 3.1 | **Highway Telemetry.** Verifies GPS tracking at >100km/h. | ✅ **PASS** (Run 16) |
-| **DoL-D** | "The Trinity" | Autel, Llama 3.1 | **Persona Validation.** Pilot vs Commander vs Analyst. | ✅ **PASS** (Run 8-10) |
-| **DoL-E** | "Ghost Wall Stress" | Gemma 2, Autel | **High Load Vision.** 8+ Objects. Verifies CPU stability. | ⚠️ **Recovered** (Run 11) |
-| **DoL-F** | "Night Owl (IFR)" | Gemma 2, Thermal | **Instrument Flight.** Verifies V-SPD/H-SPD without visual. | ✅ **PASS** (Run 14) |
-
-## 3. Architecture Change Log (Field Hotfixes)
-* **v0.9.9d:** Added `process_traffic` aggregation to fix "Asset UNK".
-* **v0.9.9e:** Added `NoneType` safety check in `geo.py` to fix crash.
-* **v0.9.9f:** Added `km/h -> m/s` conversion for OwnTracks.
-
-
-# 🛡️ SecuringSkies Test Protocol (SSTP)
-**Version:** v1.1.0 (Strategic Roadmap)
-**Date:** 2026-01-26
+**Standard:** SSTP v1.0 (IEEE 829 Compliant)
 **Status:** RELEASE CANDIDATE
+**Badge:** [![Safety](https://img.shields.io/badge/Safety_Level-Critical-red?style=for-the-badge)](Test-Protocol)
 
-## 1. ToL (Test Object List) - The Components
+> **Philosophy:** "Trust, but Verify." We use Hardware-in-the-Loop (HITL) to validate Multi-Domain Fusion in three concentric circles of trust: **Unit** (Code), **System** (Integration), and **Field** (Physics).
 
-| ID | Object | Type | Verification Criteria | Status |
-| :--- | :--- | :--- | :--- | :--- |
-| **ToL-01** | `core.officer` | Logic | **Semantic Labeling:** Distinguish GCS vs UAV. | 🟡 Pending TC-08 |
-| **ToL-02** | `core.officer` | KPI | **Dronetag Latency:** Glass-to-Glass calc. | 🟡 Field Test |
-| **ToL-03** | `core.officer` | KPI | **Autel Latency:** C2 Link calc. | ✅ Validated |
-| **ToL-04** | `drivers.adsb` | Future | **Civil Air:** Ingest SBS-1/JSON from `dump1090`. | 🗓️ Strategic |
-| **ToL-05** | `drivers.cyber` | Future | **SIEM:** Ingest OpenSearch hits as "Contacts". | 🗓️ Strategic |
+## 1. ToL (Test Object List) - Unit Level
+*Atomic verification of individual logic modules. (ID Range: 00-99)*
 
-## 2. DoL (Demo Object List) - The Missions
+| ID | Component | Verification Criteria | Tooling |
+| :--- | :--- | :--- | :--- |
+| **ToL-01** | `core.officer` | **Autel Logic:** Parse `data` JSON; separate `UAV` (Orange) from `CTRL` (Cyan). | `replay_tool.py` |
+| **ToL-02** | `core.officer` | **Dronetag Logic:** Identify `RID` packets and extract GPS regardless of nesting. | MQTT Injector |
+| **ToL-03** | `core.officer` | **OwnTracks Logic:** Normalize Speed (`km/h` $\to$ `m/s`). | iPhone App |
+| **ToL-05** | `core.officer` | **Anti-Hallucination:** Report "Sensors Blind" when visual data is null. | `main.py --debug` |
+| **ToL-07** | `outputs.hue` | **Alerts:** Trigger RED/ORANGE on Hostile, CYAN on Pilot. | Philips Hue Bridge |
+| **ToL-99** | `ops.stack` | **Infrastructure:** Mosquitto, Ollama, and Recorder are active. | `docker ps` |
 
+## 2. DoL (Demo Object List) - System & Field Level
+*Integrated scenarios that prove operational and scientific capability.*
+
+### 🟢 Phase 1: Operational Baseline (IDs 10-99)
 | ID | Scenario Name | Actors | Description | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| **DoL-A** | "The Latency Run" | Dronetag, Autel | **Thesis Core.** Comparative latency analysis. | 🗓️ This Week |
-| **DoL-B** | "The Twin-Sensor" | Autel + Dronetag | **Calibration.** Physical mounting of sensors. | 🗓️ This Week |
-| **DoL-C** | "The Glide Path" | ADS-B, Autel | **Safety.** Drone intersects airliner approach. | 🗓️ Q2 2026 |
-| **DoL-D** | "The Locked Shield" | OpenSearch, Officer | **Cyber.** SSH Brute Force triggers SITREP. | 🗓️ Q2 2026 |
+| **DoL-10** | "The Ghost Walk" | OwnTracks, Officer | **Ground Truth.** Operator walks with phone. Verifies tracking accuracy. | ✅ **PASS** |
+| **DoL-11** | "The Airspace Breach" | RID, Hue, Officer | **Hostile Simulation.** Inject unknown Serial. Verifies RED ALERT logic. | ✅ **PASS** |
+| **DoL-12** | "The Full Grid" | Multi-Vendor | **Fusion.** Stream Autel + OwnTracks simultaneously. Verifies map/icon logic. | 🟡 Pending |
+
+### 🔵 Phase 2: Thesis Field Science (IDs 100-999)
+| ID | Scenario Name | Actors | Description | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| **DoL-100** | "The Latency Run" | Dronetag, Autel | **Comparative Analysis.** LTE vs RF Latency ($L_{net}$ vs $L_{c2}$). | 🗓️ Scheduled |
+| **DoL-101** | "The Twin-Sensor" | Autel 4T + Dronetag | **Calibration.** Dronetag Mini mounted on Autel Evo 4T. Measures drift. | 🗓️ Scheduled |
+
+### 🟣 Phase 3: Strategic Expansion (IDs 1000+)
+| ID | Scenario Name | Actors | Description | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| **DoL-1000** | "The Airport Breach" | ADS-B, Remote ID | **Safety.** Drone altitude intersects Commercial Air Glide Path. | 🗓️ Future |
+| **DoL-1001** | "The Locked Shield" | OpenSearch, AI | **Cyber.** SSH Brute Force triggers AI SITREP. | 🗓️ Future |
+
+## 3. Hardware Setup (Thesis Validation)
+To reproduce results, the following Reference Architecture is used:
+1.  **Sensor A (RF):** Autel Smart Controller (Skylink 2.0).
+2.  **Sensor B (LTE):** Dronetag Mini 4G (Network Remote ID).
+3.  **Sensor C (ADS-B):** RTL-SDR (`dump1090` / `adsb-research-grid`).
+4.  **Sensor D (Cyber):** OpenSearch (Syslogs).
