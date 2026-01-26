@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """
-SecuringSkies Platform v0.9.9 (Release Candidate)
+SecuringSkies Platform v1.0.2 (Field Ops Release)
 =================================================
 Role: Bootloader & Command Interface.
 Status: PRODUCTION (Full Documentation)
+Description: 
+  Initializes the GhostCommander Core, handles MQTT network traffic,
+  manages the Replay subsystem, and executes the Intelligence Loop.
 """
 
 import argparse
@@ -18,9 +21,9 @@ from rich.panel import Panel
 import paho.mqtt.client as mqtt
 
 # ------------------------------------------------------
-# 1. ENVIRONMENT & HYGIENE (The Fixes)
+# 1. ENVIRONMENT & HYGIENE
 # ------------------------------------------------------
-# Silence the Chatty AI Libraries
+# Silence the Chatty AI Libraries to keep console clean for Metrics
 os.environ["LITELLM_LOG"] = "ERROR"
 logging.getLogger("litellm").setLevel(logging.ERROR)
 logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -71,6 +74,8 @@ def on_message(client, userdata, msg):
     """Passes raw MQTT traffic to the Officer for processing."""
     if commander:
         commander.process_traffic(msg.topic, msg.payload)
+        # VISUAL HEARTBEAT: Print dot for every packet received
+        # (Removed the debug_mode check so you always see traffic)
         print(".", end="", flush=True) 
 
 # ------------------------------------------------------
@@ -82,9 +87,9 @@ def main():
     # Clean Exit Handler
     signal.signal(signal.SIGINT, lambda s, f: sys.exit(0))
     
-    # CLI Argument Definition (Restoring Full Verbosity)
+    # CLI Argument Definition
     parser = argparse.ArgumentParser(
-        description="🦅 GHOST COMMANDER v0.9.9 - Modular AGCS Platform",
+        description="🦅 GHOST COMMANDER v1.0.2 - Modular AGCS Platform",
         formatter_class=argparse.RawTextHelpFormatter,
         epilog="""
 SCIENTIFIC TELEMETRY STANDARDS:
@@ -112,7 +117,7 @@ VOICE SYNTHESIS (MacOS):
 
 CLOUD OPERATIONS (securingskies.eu):
 ------------------------------------
-  python3 main.py --ip mqtt.securingskies.eu --tls --username "admin" --password "secret"
+  python3 main.py --ip mqtt.securingskies.eu --tls --username "viewer" --password 'PASS'
         """
     )
     
@@ -140,7 +145,7 @@ CLOUD OPERATIONS (securingskies.eu):
     fx.add_argument("--record", action="store_true", help="Enable Black Box JSONL Recording")
     fx.add_argument("--metrics", action="store_true", help="Enable Scientific Metrics Engine")
     fx.add_argument("--debug", action="store_true", help="Show raw debugging info")
-    fx.add_argument("--show-prompt", action="store_true", help="Show AI System Prompt in console")
+    fx.add_argument("--show-prompt", action="store_true", help="Show AI System Prompt in console (Once)")
 
     # Time Machine
     sim = parser.add_argument_group('📼 Time Machine (Replay)')
@@ -150,7 +155,7 @@ CLOUD OPERATIONS (securingskies.eu):
     
     args = parser.parse_args()
 
-    # Replay Shim
+    # Replay Shim (Subprocess Launch)
     if args.replay:
         target_ip = args.ip if args.ip != "192.168.192.100" else "127.0.0.1"
         args.ip = target_ip 
@@ -162,7 +167,7 @@ CLOUD OPERATIONS (securingskies.eu):
         except FileNotFoundError:
             console.print("[red]❌ Replay Tool not found in labs/replay/replay_tool.py[/red]")
 
-    console.print(Panel.fit(f"[bold yellow]🦅 GHOST COMMANDER v0.9.9 (Modular Platform)[/bold yellow]"))
+    console.print(Panel.fit(f"[bold yellow]🦅 GHOST COMMANDER v1.0.2 (Modular Platform)[/bold yellow]"))
     
     ai_engine = "openai" if args.cloud else "ollama"
     model_name = "gpt-4o" if args.cloud else args.model.replace("ollama:", "")
@@ -176,10 +181,12 @@ CLOUD OPERATIONS (securingskies.eu):
         use_cloud=args.cloud,
         record_enabled=args.record,
         hue_enabled=args.hue,
-        metrics_enabled=args.metrics
+        metrics_enabled=args.metrics,
+        persona=args.persona 
     )
     commander.debug_mode = args.debug
-    commander.track_traffic = args.traffic
+    if hasattr(commander, 'track_traffic'):
+        commander.track_traffic = args.traffic
 
     # Connect to MQTT
     client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
@@ -204,6 +211,7 @@ CLOUD OPERATIONS (securingskies.eu):
 
     # Main Mission Loop
     last_report = time.time()
+    first_run = True # Flag to ensure prompt is shown only once
     
     while True:
         try:
@@ -212,12 +220,18 @@ CLOUD OPERATIONS (securingskies.eu):
                 print("") 
                 console.print(Panel(f"[bold cyan]⚡ DIRECTOR UPDATE ({time.strftime('%H:%M:%S')})[/bold cyan]", border_style="cyan"))
                 
-                # Execute AI Analysis (Upper case persona for consistency)
-                report = commander.generate_sitrep(args.persona.upper(), show_prompt=args.show_prompt)
+                # Logic: Only show prompt if requested AND it's the first run
+                should_show = args.show_prompt and first_run
+                
+                # Execute AI Analysis
+                report = commander.generate_sitrep(show_prompt=should_show)
+                
+                # Turn off flag so it doesn't show again
+                if first_run: first_run = False
                 
                 console.print(f"[white]{report}[/white]")
                 
-                # Trigger Voice
+                # Trigger Voice (Non-blocking)
                 if args.voice:
                     try: 
                         subprocess.Popen(["say", "-v", args.voice_id, "-r", "185", report])
