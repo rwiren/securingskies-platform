@@ -1,21 +1,19 @@
 """
-SecuringSkies DSPy Optimizer (v1.0 Academic)
+SecuringSkies DSPy Optimizer (v1.2 Academic)
 ============================================
 MODULE: labs.optimizer
-ROLE: The "Academy" (Multi-Persona Trainer)
-ACADEMIC REF: Stanford DSPy - BootstrapFewShot
+VERSION: 1.2.0 (Role-Specific Grading)
 DESCRIPTION:
-  Optimizes specific AI personas by selecting the best Few-Shot examples
-  from historical logs.
+  Optimizes AI personas using distinct grading metrics for each role.
   
-  FEATURES:
-  - Smart Filtering (v1.0): Correctly identifies Raw Autel Telemetry (obj_cnt, pos_type).
-  - Multi-Persona: Supports Analyst, Pilot, and Commander signatures.
-  - Metric-Driven: Grades on Safety (Recall), Precision (Factuality), and Logic.
+  IMPROVEMENTS v1.2:
+  - Analyst: Rewards 'Technical Vocabulary' (RTK, Latency, Delta).
+  - Commander: Rewards 'Spatial Awareness' (Distance, Speed, Direction).
+  - Pilot: Rewards 'Extreme Brevity' (Under 20 words).
+  - Factuality: Strict Battery % checking for all.
 
 USAGE:
-  python3 labs/optimizer.py --help
-  python3 labs/optimizer.py --persona analyst --limit 30 --log logs/mission_20260125_163706.jsonl
+  python3 labs/optimizer.py --persona analyst --log golden_datasets/mission_20260127_172522.jsonl
 """
 
 import dspy
@@ -23,39 +21,48 @@ import json
 import os
 import re
 import argparse
-import sys
 from dspy.teleprompt import BootstrapFewShot
 
 # ------------------------------------------------------------------
-# 1. PERSONA SIGNATURES (The "Job Descriptions")
+# 1. PERSONA SIGNATURES
 # ------------------------------------------------------------------
 
 class AnalystSitrep(dspy.Signature):
     """
-    You are a Forensic Data Scientist (Analyst). 
-    Input is raw JSON. Output is a detailed assessment of Data Quality, 
-    RTK Accuracy, and Battery Precision. Report any anomalies.
+    You are a Forensic Data Scientist.
+    Input: Raw Telemetry (JSON).
+    Output: Technical Assessment (40-50 words).
+    INSTRUCTIONS:
+    - Compare Autel RTK vs Dronetag GPS.
+    - Report Latency and Altitude Deltas.
+    - Use technical terms: 'Delta', 'Offset', 'Latency', 'RTK'.
     """
     raw_telemetry = dspy.InputField(desc="Raw JSON flattened to string")
-    report = dspy.OutputField(desc="Forensic Report (Max 30 words)")
+    report = dspy.OutputField(desc="Forensic Report. Mathematical & Precise.")
 
 class PilotSitrep(dspy.Signature):
     """
     You are a Drone Co-Pilot. 
-    Input is raw JSON. Output is an IMMEDIATE, CONCISE status update.
-    Focus on Warning Flags, Battery Criticality, and Obstacles.
+    Input: Raw Telemetry (JSON).
+    Output: Immediate Action (10-20 words).
+    INSTRUCTIONS:
+    - Safety Critical only (Battery, Obstacles).
+    - If status is nominal, be brief.
     """
     raw_telemetry = dspy.InputField(desc="Raw JSON flattened to string")
-    report = dspy.OutputField(desc="Cockpit Callout (Max 15 words)")
+    report = dspy.OutputField(desc="Cockpit Callout. Urgent & Direct.")
 
 class CommanderSitrep(dspy.Signature):
     """
-    You are a Tactical Commander. 
-    Input is raw JSON. Output is a Strategic Summary.
-    Focus on Mission Progress, ETA, and Asset Separation.
+    You are a Strategic Mission Commander.
+    Input: Raw Telemetry (JSON).
+    Output: Situational Awareness (20-40 words).
+    INSTRUCTIONS:
+    - Report Asset Status (UAV, GCS).
+    - Report Vectors (Speed, Heading) and Relative Distances.
     """
     raw_telemetry = dspy.InputField(desc="Raw JSON flattened to string")
-    report = dspy.OutputField(desc="Strategic Update (Max 40 words)")
+    report = dspy.OutputField(desc="Strategic Update. Big Picture.")
 
 PERSONA_MAP = {
     "analyst": AnalystSitrep,
@@ -64,121 +71,131 @@ PERSONA_MAP = {
 }
 
 # ------------------------------------------------------------------
-# 2. METRIC FUNCTION (The "Grader")
+# 2. ROLE-SPECIFIC METRICS (The "Specialists")
 # ------------------------------------------------------------------
-def validate_sitrep(example, pred, trace=None):
-    """
-    Universal Grading Logic (Safety & Factuality).
-    """
+
+def check_factuality(truth, pred_text):
+    """Universal Check: Do not hallucinate battery numbers."""
+    truth_batt_match = re.search(r"'batt': (\d+)", truth)
+    if not truth_batt_match: truth_batt_match = re.search(r"'capacity_percent': (\d+)", truth)
+    
+    if truth_batt_match:
+        if truth_batt_match.group(1) in pred_text:
+            return 1
+        else:
+            return -1 # Lying about battery is a sin
+    return 0
+
+def validate_analyst(example, pred, trace=None):
+    """Grading for the SCIENTIST."""
     score = 0
     truth = example.raw_telemetry
     pred_text = pred.report
     
-    # CRITERION 1: Human Safety (Recall) - UNIVERSAL RULE
-    # Logic: If raw JSON has 'cls_id': 30 (Human) or 4, we MUST see "Human" or "CONTACT"
-    if "'cls_id': 30" in truth or "'cls_id': 4" in truth or "Human" in truth:
-        if "Human" in pred_text or "CONTACT" in pred_text: 
-            score += 2
-        else:
-            score -= 10 # Critical Safety Failure (Immediate Fail)
-            
-    # CRITERION 2: Factuality (Battery Check)
-    truth_batt_match = re.search(r"'batt': (\d+)", truth) # Check Normalized
-    if not truth_batt_match:
-         truth_batt_match = re.search(r"'capacity_percent': (\d+)", truth) # Check Raw Autel
-         
-    if truth_batt_match:
-        truth_batt = truth_batt_match.group(1)
-        if truth_batt in pred_text:
-            score += 1 
-            
-    # CRITERION 3: Hallucination Check
-    # If no objects in truth, but prediction says VISUAL/CONTACT -> Penalty
-    if "obj_cnt" in truth and "'obj_cnt': 0" in truth:
-        if "VISUAL" in pred_text or "CONTACT" in pred_text:
-            score -= 1
-            
-    # THRESHOLD: Must achieve a baseline score to pass
+    # 1. Factuality
+    score += check_factuality(truth, pred_text)
+    
+    # 2. Vocabulary (The PhD Check)
+    tech_terms = ["Latency", "RTK", "Delta", "Offset", "Accuracy", "Fused", "ms", "s"]
+    term_count = sum(1 for term in tech_terms if term in pred_text)
+    if term_count >= 2: score += 2
+    
+    # 3. Length (Must be detailed)
+    if len(pred_text.split()) < 20: score -= 1
+    
+    return score >= 2
+
+def validate_commander(example, pred, trace=None):
+    """Grading for the STRATEGIST."""
+    score = 0
+    truth = example.raw_telemetry
+    pred_text = pred.report
+    
+    # 1. Factuality
+    score += check_factuality(truth, pred_text)
+    
+    # 2. Spatial Awareness
+    spatial_terms = ["Speed", "Distance", "North", "South", "East", "West", "GCS", "UAV", "km/h"]
+    term_count = sum(1 for term in spatial_terms if term in pred_text)
+    if term_count >= 2: score += 2
+    
+    # 3. Length (Medium)
+    if len(pred_text.split()) > 50: score -= 1
+    
+    return score >= 2
+
+def validate_pilot(example, pred, trace=None):
+    """Grading for the WATCHDOG."""
+    score = 0
+    truth = example.raw_telemetry
+    pred_text = pred.report
+    
+    # 1. Factuality
+    score += check_factuality(truth, pred_text)
+    
+    # 2. Safety (Recall)
+    if "Human" in truth and "Human" not in pred_text: score -= 10
+    
+    # 3. Brevity (The main goal)
+    word_count = len(pred_text.split())
+    if word_count <= 20: score += 2
+    if word_count > 30: score -= 2
+    
     return score >= 1
 
+METRIC_MAP = {
+    "analyst": validate_analyst,
+    "commander": validate_commander,
+    "pilot": validate_pilot
+}
+
 # ------------------------------------------------------------------
-# 3. DATA LOADER (With FIXED Smart Filtering)
+# 3. DATA LOADER
 # ------------------------------------------------------------------
-def load_training_data(log_path, limit=10):
-    """Ingests logs but FILTERS for High-Value Data (Autel/RTK/AI)."""
+def load_training_data(log_path, limit=25):
     dataset = []
     
-    # A. GOLDEN SEED (Guarantees the model knows the format)
-    # This prevents "0 traces" if the log is empty or incompatible.
+    # Seed to ensure format compliance
     dataset.append(dspy.Example(
-        raw_telemetry="{'tid': 'UAV-1479', 'batt': 59, 'pos_type': 50, 'obj_cnt': 1, 'objs': [{'cls_id': 30}]}",
-        report="Asset: UAV-1479 | GPS: GOOD (RTK-FIX) | BATT: 59% | ⚠️ CONTACT: Human detected (Class 30)"
+        raw_telemetry="{'tid': 'UAV-1', 'batt': 55, 'pos_type': 50, 'link_latency': '1.2s', 'alt': 120, 'height': 45}",
+        report="DATA INTEGRITY: RTK Fixed (Type 50). Latency 1.2s. Vertical Delta: 75m (MSL vs AGL). Battery 55%."
     ).with_inputs('raw_telemetry'))
 
     if not os.path.exists(log_path):
         print(f"❌ ERROR: Log file not found at {log_path}")
-        return dataset # Return seed only
+        return dataset 
         
-    print(f"📂 Scanning {log_path} for High-Value Events...")
-    
+    print(f"📂 Scanning {log_path}...")
     with open(log_path, 'r', encoding='utf-8') as f:
         for line in f:
             if len(dataset) >= limit: break
             try:
                 rec = json.loads(line)
-                topic = rec.get('topic', '')
                 data = rec.get('data', {})
                 data_str = str(data)
                 
-                # --- SMART FILTER v1.0 (FIXED) ---
-                # 1. Reject OwnTracks (Phones) -> Too simple
-                if "owntracks" in topic: continue
-                
-                # 2. Reject boring heartbeats (Must have GPS fix OR Objects)
-                # We look for RAW keys: 'pos_type' (RTK) or 'obj_cnt' (Vision)
-                has_rtk = 'pos_type' in data_str
-                has_objs = 'obj_cnt' in data_str
-                
-                if not (has_rtk or has_objs): 
-                    continue
-                # ---------------------------
-
-                # Add a synthetic TID for Autel logs if missing (for consistency)
-                if 'tid' not in data: data['tid'] = "AUTEL_TRAINING_UNIT"
-                
-                raw_str = str(data)
-                dataset.append(dspy.Example(raw_telemetry=raw_str).with_inputs('raw_telemetry'))
+                # Filter for useful data
+                if 'lat' in data_str or 'obj_cnt' in data_str:
+                    if 'tid' not in data: data['tid'] = "TRAINING_UNIT"
+                    dataset.append(dspy.Example(raw_telemetry=str(data)).with_inputs('raw_telemetry'))
             except: continue
             
-    print(f"💎 Found {len(dataset)} High-Value Examples (Filtered from noise).")
+    print(f"💎 Found {len(dataset)} Training Examples.")
     return dataset
 
 # ------------------------------------------------------------------
 # 4. EXECUTION LOOP
 # ------------------------------------------------------------------
 def main():
-    parser = argparse.ArgumentParser(description="🦅 SecuringSkies Multi-Persona Optimizer")
-    
-    # ARGUMENTS with DEFAULTS
-    parser.add_argument("--log", type=str, default="logs/mission_20260125_163706.jsonl", 
-                        help="Path to training logs (Recommended: 163706 for Human Data)")
-    parser.add_argument("--model", type=str, default="ollama/llama3.1", 
-                        help="Target LLM (Default: llama3.1)")
-    parser.add_argument("--persona", type=str, default="analyst", choices=["analyst", "pilot", "commander"], 
-                        help="Target Persona to train")
-    parser.add_argument("--limit", type=int, default=20, 
-                        help="Training set size (Higher is better for complex logs)")
-    parser.add_argument("--output", type=str, default=None, help="Custom output path")
-    
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--log", type=str, required=True)
+    parser.add_argument("--persona", type=str, required=True, choices=["analyst", "pilot", "commander"])
+    parser.add_argument("--model", type=str, default="ollama/llama3.1")
     args = parser.parse_args()
 
-    # Dynamic Output Path
-    if args.output is None:
-        args.output = f"config/optimized_{args.persona}.json"
-
-    print(f"🦅 ACADEMY v1.0: Training '{args.persona.upper()}' on {args.model}...")
+    output_path = f"config/optimized_{args.persona}.json"
+    print(f"🦅 ACADEMY v1.2: Training '{args.persona.upper()}' using Specialized Metric...")
     
-    # 1. Configure LM
     try:
         lm = dspy.LM(model=args.model, api_base='http://localhost:11434', api_key='ollama')
         dspy.settings.configure(lm=lm)
@@ -186,26 +203,22 @@ def main():
         print(f"⚠️ INTELLIGENCE FAILURE: {e}")
         return
     
-    # 2. Select Persona
     signature_class = PERSONA_MAP[args.persona]
-    module = dspy.ChainOfThought(signature_class)
+    metric_func = METRIC_MAP[args.persona]
     
-    # 3. Load Data
-    trainset = load_training_data(args.log, args.limit)
+    module = dspy.ChainOfThought(signature_class)
+    trainset = load_training_data(args.log)
 
-    # 4. Optimize
-    print(f"🧠 Optimizing {args.persona.upper()} logic...")
-    teleprompter = BootstrapFewShot(metric=validate_sitrep, max_bootstrapped_demos=3, max_labeled_demos=1)
+    # Bootstrap
+    teleprompter = BootstrapFewShot(metric=metric_func, max_bootstrapped_demos=3, max_labeled_demos=1)
     
     try:
         optimized_program = teleprompter.compile(module, trainset=trainset)
-        
-        print("\n✅ GRADUATION DAY! Optimization Success.")
-        print("-" * 60)
-        optimized_program.save(args.output)
-        print(f"💾 Trained Brain saved to: {args.output}")
-        print(f"💡 ACTION: Run Officer with: --persona {args.persona}")
-        
+        optimized_program.save(output_path)
+        print(f"\n✅ OPTIMIZATION SUCCESS: {output_path}")
+        if hasattr(optimized_program, 'demos'):
+            print(f"   Learned {len(optimized_program.demos)} high-quality patterns.")
+            
     except Exception as e:
         print(f"❌ Training Failed: {e}")
 

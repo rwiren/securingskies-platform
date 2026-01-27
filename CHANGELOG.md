@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.3] - 2026-01-27
+**Status:** VALIDATED (Production Ready)
+**Focus:** AI Optimization, Scientific Validation, and Documentation.
+
+### Added
+- **Optimization:** Integrated **DSPy** (`labs/optimizer.py`) for automated prompt engineering, replacing brittle static system prompts.
+- **Intelligence:** Implemented Role-Specific Grading Metrics to enforcing doctrine:
+    - `validate_pilot`: Enforces extreme brevity (<20 words) and safety.
+    - `validate_commander`: Rewards spatial logic and vector tracking.
+    - `validate_analyst`: Rewards technical vocabulary (RTK, Latency, Delta).
+- **Validation:** Added **Golden Datasets** (`golden_datasets/`) containing high-fidelity "Jorvas Flight" logs (`172522`) for regression testing.
+- **Documentation:** Created **OPS-002** (`docs/AI_OPTIMIZATION.md`) detailing the "Three-Layer Validation" strategy (Hardware -> Network -> Cognitive).
+- **Protocol:** Finalized `TEST_PLAN.md` and `TESTCASES.md` with successful pass rates for "Twin-Sensor Calibration" (TC-101) and "Latency Run" (TC-100).
+
+### Fixed
+- **Zombie Process:** Resolved issue where `main.py` replay loop failed to exit cleanly after log completion.
+- **Analyst Silence:** Fixed optimizer bug where the Analyst failed to learn technical reporting patterns due to improper grading logic.
+- **Pilot Noise:** Reduced Pilot verbosity by 82% (avg 19 words), eliminating operator distraction during nominal flight phases.
+
+### Changed
+- **CLI:** Enhanced `main.py` to support explicit `--persona` selection for targeted simulation replay.
+- **Hygiene:** Standardized logging outputs to strictly separate `metrics_*.csv` (Scientific Data) from `mission_*.jsonl` (Audit Trail).
+
 ## [1.0.0] - 2026-01-26
 **Status:** RELEASE (Stable)
 

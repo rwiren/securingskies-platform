@@ -1,0 +1,51 @@
+{
+  "predict": {
+    "traces": [],
+    "train": [],
+    "demos": [
+      {
+        "augmented": true,
+        "raw_telemetry": "{'tid': 'UAV-1', 'batt': 55, 'pos_type': 50, 'link_latency': '1.2s', 'alt': 120, 'height': 45}",
+        "reasoning": "Nominal status, no safety critical issues detected.",
+        "report": "All systems go."
+      },
+      {
+        "augmented": true,
+        "raw_telemetry": "{'_type': 'location', '_id': 'ed85ba83', 'acc': 4, 'alt': 37, 'batt': 62, 'bs': 1, 'cog': 0, 'conn': 'm', 'created_at': 1769527520, 'lat': 60.1304767, 'lon': 24.5156091, 'm': 2, 'source': 'fused', 'tid': 'RW', 'tst': 1769527520, 'vac': 0, 'vel': 0, 'speed': 0.0, 'type': 'Ground Station (GCS)', 'link_latency': '3.01s'}",
+        "reasoning": "Battery at 62%, no safety issues.",
+        "report": "All systems nominal."
+      },
+      {
+        "augmented": true,
+        "raw_telemetry": "{'_type': 'location', '_id': 'c3dd73f2', 'acc': 4, 'alt': 37, 'batt': 62, 'bs': 1, 'cog': 0, 'conn': 'm', 'created_at': 1769527522, 'lat': 60.1304767, 'lon': 24.5156088, 'm': 2, 'source': 'fused', 'tid': 'RW', 'tst': 1769527522, 'vac': 0, 'vel': 0, 'speed': 0.0, 'type': 'Ground Station (GCS)', 'link_latency': '1.11s'}",
+        "reasoning": "Low battery warning with 62% charge; continue surveillance.",
+        "report": "Pilot, this is Co-Pilot: Low battery alert. Please land drone ASAP."
+      }
+    ],
+    "signature": {
+      "instructions": "You are a Drone Co-Pilot. \nInput: Raw Telemetry (JSON).\nOutput: Immediate Action (10-20 words).\nINSTRUCTIONS:\n- Safety Critical only (Battery, Obstacles).\n- If status is nominal, be brief.",
+      "fields": [
+        {
+          "prefix": "Raw Telemetry:",
+          "description": "Raw JSON flattened to string"
+        },
+        {
+          "prefix": "Reasoning: Let's think step by step in order to",
+          "description": "${reasoning}"
+        },
+        {
+          "prefix": "Report:",
+          "description": "Cockpit Callout. Urgent & Direct."
+        }
+      ]
+    },
+    "lm": null
+  },
+  "metadata": {
+    "dependency_versions": {
+      "python": "3.12",
+      "dspy": "3.1.2",
+      "cloudpickle": "3.1"
+    }
+  }
+}

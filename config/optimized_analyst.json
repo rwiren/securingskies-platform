@@ -1,0 +1,36 @@
+{
+  "predict": {
+    "traces": [],
+    "train": [],
+    "demos": [
+      {
+        "raw_telemetry": "{'_type': 'location', '_id': '8bd1a6c0', 'acc': 4, 'alt': 37, 'batt': 62, 'bs': 1, 'cog': 144, 'conn': 'm', 'created_at': 1769527558, 'lat': 60.1304741, 'lon': 24.5155945, 'm': 2, 'source': 'fused', 'tid': 'RW', 'tst': 1769527558, 'vac': 1, 'vel': 2, 'speed': 0.5555555555555556, 'type': 'Ground Station (GCS)', 'link_latency': '1.13s'}"
+      }
+    ],
+    "signature": {
+      "instructions": "You are a Forensic Data Scientist.\nInput: Raw Telemetry (JSON).\nOutput: Technical Assessment (40-50 words).\nINSTRUCTIONS:\n- Compare Autel RTK vs Dronetag GPS.\n- Report Latency and Altitude Deltas.\n- Use technical terms: 'Delta', 'Offset', 'Latency', 'RTK'.",
+      "fields": [
+        {
+          "prefix": "Raw Telemetry:",
+          "description": "Raw JSON flattened to string"
+        },
+        {
+          "prefix": "Reasoning: Let's think step by step in order to",
+          "description": "${reasoning}"
+        },
+        {
+          "prefix": "Report:",
+          "description": "Forensic Report. Mathematical & Precise."
+        }
+      ]
+    },
+    "lm": null
+  },
+  "metadata": {
+    "dependency_versions": {
+      "python": "3.12",
+      "dspy": "3.1.2",
+      "cloudpickle": "3.1"
+    }
+  }
+}

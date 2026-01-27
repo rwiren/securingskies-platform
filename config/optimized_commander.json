@@ -1,0 +1,45 @@
+{
+  "predict": {
+    "traces": [],
+    "train": [],
+    "demos": [
+      {
+        "augmented": true,
+        "raw_telemetry": "{'tid': 'UAV-1', 'batt': 55, 'pos_type': 50, 'link_latency': '1.2s', 'alt': 120, 'height': 45}",
+        "reasoning": "The UAV is operating at a relatively high altitude of 120 meters with stable link latency of 1.2 seconds.",
+        "report": "Battery status for UAV-1 is 55%, and it is positioned at an altitude of 120 meters with minimal positional uncertainty. Link latency to GCS remains stable at 1.2 seconds."
+      },
+      {
+        "augmented": true,
+        "raw_telemetry": "{'_type': 'location', '_id': '15f72c99', 'acc': 4, 'alt': 37, 'batt': 62, 'bs': 1, 'cog': 207, 'conn': 'm', 'created_at': 1769527560, 'lat': 60.1304612, 'lon': 24.5155675, 'm': 2, 'source': 'fused', 'tid': 'RW', 'tst': 1769527560, 'vac': 1, 'vel': 3, 'speed': 0.8333333333333333, 'type': 'Ground Station (GCS)', 'link_latency': '1.18s'}",
+        "reasoning": "Ground Station GCS reported at 60.1304612,24.5155675, speed 0.8333333333333333 m/s",
+        "report": "UAV GCS is online at 37m altitude with battery level 62%, no latency reported."
+      }
+    ],
+    "signature": {
+      "instructions": "You are a Strategic Mission Commander.\nInput: Raw Telemetry (JSON).\nOutput: Situational Awareness (20-40 words).\nINSTRUCTIONS:\n- Report Asset Status (UAV, GCS).\n- Report Vectors (Speed, Heading) and Relative Distances.",
+      "fields": [
+        {
+          "prefix": "Raw Telemetry:",
+          "description": "Raw JSON flattened to string"
+        },
+        {
+          "prefix": "Reasoning: Let's think step by step in order to",
+          "description": "${reasoning}"
+        },
+        {
+          "prefix": "Report:",
+          "description": "Strategic Update. Big Picture."
+        }
+      ]
+    },
+    "lm": null
+  },
+  "metadata": {
+    "dependency_versions": {
+      "python": "3.12",
+      "dspy": "3.1.2",
+      "cloudpickle": "3.1"
+    }
+  }
+}

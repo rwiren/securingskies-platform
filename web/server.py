@@ -26,7 +26,7 @@ from dotenv import load_dotenv
 # 1. CONFIGURATION
 # ----------------
 load_dotenv()
-MQTT_BROKER = os.getenv("MQTT_BROKER", "192.168.1.100") 
+MQTT_BROKER = os.getenv("MQTT_BROKER", "192.168.192.100") 
 MQTT_PORT = int(os.getenv("MQTT_PORT", 1883))
 
 # Subscribe to ALL relevant telemetry streams

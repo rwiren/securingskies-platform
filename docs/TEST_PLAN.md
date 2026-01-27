@@ -1,47 +1,75 @@
-# 🛡️ SecuringSkies Test Protocol (SSTP)
-**Standard:** SSTP v1.0 (IEEE 829 Compliant)
-**Status:** RELEASE CANDIDATE
-**Badge:** [![Safety](https://img.shields.io/badge/Safety_Level-Critical-red?style=for-the-badge)](Test-Protocol)
+# 🧪 SecuringSkies Validation Protocols
+**Protocol:** SSTP v1.0
+**Traceability:** Maps to `TEST_PLAN.md` (ToL/DoL IDs).
 
-> **Philosophy:** "Trust, but Verify." We use Hardware-in-the-Loop (HITL) to validate Multi-Domain Fusion in three concentric circles of trust: **Unit** (Code), **System** (Integration), and **Field** (Physics).
+## 🛡️ TIER 1: Unit Logic (Stability & Hygiene)
+*Focus: "The Poison Pill" - Does the code survive bad data?*
 
-## 1. ToL (Test Object List) - Unit Level
-*Atomic verification of individual logic modules. (ID Range: 00-99)*
+### 🟢 TC-07: "Null GPS Resilience"
+**Ref:** `ToL-99` | **Criticality:** HIGH
+- [x] **Test:** Inject JSON packet: `{"data": {"latitude": null, "longitude": null}}`.
+- [x] **Pass:** System defaults distance to `0m` or maintains last known. **NO CRASH.**
+- [x] **Evidence:** Log `mission_20260126_214512.jsonl` shows continuous operation post-injection.
 
-| ID | Component | Verification Criteria | Tooling |
-| :--- | :--- | :--- | :--- |
-| **ToL-01** | `core.officer` | **Autel Logic:** Parse `data` JSON; separate `UAV` (Orange) from `CTRL` (Cyan). | `replay_tool.py` |
-| **ToL-02** | `core.officer` | **Dronetag Logic:** Identify `RID` packets and extract GPS regardless of nesting. | MQTT Injector |
-| **ToL-03** | `core.officer` | **OwnTracks Logic:** Normalize Speed (`km/h` $\to$ `m/s`). | iPhone App |
-| **ToL-05** | `core.officer` | **Anti-Hallucination:** Report "Sensors Blind" when visual data is null. | `main.py --debug` |
-| **ToL-07** | `outputs.hue` | **Alerts:** Trigger RED/ORANGE on Hostile, CYAN on Pilot. | Philips Hue Bridge |
-| **ToL-99** | `ops.stack` | **Infrastructure:** Mosquitto, Ollama, and Recorder are active. | `docker ps` |
+### 🔴 TC-09: "Speed Normalization"
+**Ref:** `ToL-03`
+**Objective:** Verify Physics Engine inputs.
+- [x] **Test:** Inject OwnTracks packet with `vel: 100` (km/h).
+- [x] **Pass:** AI receives `H-SPD: 27.7 m/s` and reports "MOVING".
 
-## 2. DoL (Demo Object List) - System & Field Level
-*Integrated scenarios that prove operational and scientific capability.*
+---
 
-### 🟢 Phase 1: Operational Baseline (IDs 10-99)
-| ID | Scenario Name | Actors | Description | Status |
-| :--- | :--- | :--- | :--- | :--- |
-| **DoL-10** | "The Ghost Walk" | OwnTracks, Officer | **Ground Truth.** Operator walks with phone. Verifies tracking accuracy. | ✅ **PASS** |
-| **DoL-11** | "The Airspace Breach" | RID, Hue, Officer | **Hostile Simulation.** Inject unknown Serial. Verifies RED ALERT logic. | ✅ **PASS** |
-| **DoL-12** | "The Full Grid" | Multi-Vendor | **Fusion.** Stream Autel + OwnTracks simultaneously. Verifies map/icon logic. | 🟡 Pending |
+## 🛡️ TIER 2: Semantic Integrity (AI Reasoning)
+*Focus: "The Brain Check" - Does the AI understand what it sees?*
 
-### 🔵 Phase 2: Thesis Field Science (IDs 100-999)
-| ID | Scenario Name | Actors | Description | Status |
-| :--- | :--- | :--- | :--- | :--- |
-| **DoL-100** | "The Latency Run" | Dronetag, Autel | **Comparative Analysis.** LTE vs RF Latency ($L_{net}$ vs $L_{c2}$). | 🗓️ Scheduled |
-| **DoL-101** | "The Twin-Sensor" | Autel 4T + Dronetag | **Calibration.** Dronetag Mini mounted on Autel Evo 4T. Measures drift. | 🗓️ Scheduled |
+### 🔴 TC-08: "The Ghost Buster" (Aggregation)
+**Ref:** `ToL-01`
+**Objective:** Prevent "Split Brain" (Ghost Assets) on Autel startup.
+- [x] **Test:** Stream Autel Controller packets (GCS) without Drone packets.
+- [x] **Pass:** Pilot AI reports "No UAVs active" despite GCS telemetry being present.
+- [x] **Evidence:** Verified in `metrics_20260127_214842.csv`.
 
-### 🟣 Phase 3: Strategic Expansion (IDs 1000+)
-| ID | Scenario Name | Actors | Description | Status |
-| :--- | :--- | :--- | :--- | :--- |
-| **DoL-1000** | "The Airport Breach" | ADS-B, Remote ID | **Safety.** Drone altitude intersects Commercial Air Glide Path. | 🗓️ Future |
-| **DoL-1001** | "The Locked Shield" | OpenSearch, AI | **Cyber.** SSH Brute Force triggers AI SITREP. | 🗓️ Future |
+### 🟣 TC-AI-01: "Persona Distinctiveness"
+**Ref:** `DoL-102`
+**Objective:** Verify DSPy Optimization successfully differentiates roles.
+- [x] **Test:** Replay `mission_20260127_172522.jsonl` against all 3 personas.
+- [x] **Pass:** * Pilot Avg Word Count < 25.
+    * Analyst Avg Word Count > 40.
+    * Factuality Score = 100% for all.
+- [x] **Evidence:** Wiki `OPS-002` validation table.
 
-## 3. Hardware Setup (Thesis Validation)
-To reproduce results, the following Reference Architecture is used:
-1.  **Sensor A (RF):** Autel Smart Controller (Skylink 2.0).
-2.  **Sensor B (LTE):** Dronetag Mini 4G (Network Remote ID).
-3.  **Sensor C (ADS-B):** RTL-SDR (`dump1090` / `adsb-research-grid`).
-4.  **Sensor D (Cyber):** OpenSearch (Syslogs).
+---
+
+## 🛡️ TIER 3: Field Validation (Physics & Latency)
+*Focus: "The Thesis" - Hardware-in-the-Loop Science.*
+
+### 🔵 TC-100: "The Latency Run"
+**Ref:** `DoL-100` | **Hardware:** Autel Evo 4T MAX V2 + Dronetag Mini
+**Objective:** Compare $L_{net}$ (LTE) vs $L_{c2}$ (RF).
+- [x] **Action:** Drive/Fly for 15 minutes in mixed 4G coverage.
+- [x] **Metric:** Record `link_latency` average vs `c2_latency` average.
+- [x] **Result:** Validated. MQTT latency spikes to 15s handled gracefully by Commander buffering.
+
+### 🔵 TC-101: "The Twin-Sensor" (Calibration)
+**Ref:** `DoL-101`
+**Objective:** Measure Timestamp Jitter.
+- [x] **Setup:** Mount Dronetag Mini physically onto Autel Evo 4T.
+- [x] **Action:** Perform "Box Pattern" flight (Jorvas Flight).
+- [x] **Pass:** Position delta between sensors < 5 meters (GNSS accuracy limit).
+- [x] **Evidence:** `analysis_172522.png` confirmed correlation between Autel RTK and Dronetag GPS.
+
+---
+
+## 🛡️ TIER 4: Multi-Domain Fusion (Strategic)
+*Focus: "The Vision" - Cross-Domain Correlation.*
+
+### 🟣 TC-1000: "ADS-B Ingestion"
+**Ref:** `ToL-04`
+- [ ] **Test:** Stream `dump1090` JSON.
+- [ ] **Pass:** Commercial flight appears as distinct icon type.
+
+## 📋 Pre-Flight Checklist (The "Go/No-Go")
+1. [x] **Mosquitto** running on `:1883`.
+2. [x] **Ollama** running `llama3.1`.
+3. [x] **DSPy Configs** (`optimized_*.json`) loaded.
+4. [x] **Golden Dataset** available in `golden_datasets/`.
