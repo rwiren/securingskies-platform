@@ -158,6 +158,21 @@ This platform is not just theory. It has been validated in mixed urban/highway e
 
 ---
 
+## 🧪 Field Validation & Scientific Benchmarking
+
+The platform validates architectural theses through rigorous Hardware-in-the-Loop (HITL) field trials, moving beyond theoretical simulation into physical RF environments.
+
+* **Operation "Sibbo Gauntlet" (Jan 2026):**
+    * **Scope:** High-velocity Telemetry Fusion ($v > 100 \text{ km/h}$) and Computer Vision integration.
+    * **Result:** Validated real-time correlation of heterogeneous data streams (Autel, OwnTracks, Android) under dynamic urban conditions.
+* **Operation "Jorvas Triangle" (Jan 2026):**
+    * **Scope:** Twin-Sensor Calibration and AI Doctrine Optimization.
+    * **Result:** Quantified GNSS drift ($L_{net}$ vs $L_{c2}$) and validated the **OPS-002** DSPy Optimization protocol, achieving 100% Factuality Scores in AI reporting.
+
+> 📚 **Methodology & Data:** Review full [Mission Logs and Benchmarks](https://github.com/rwiren/securingskies-platform/wiki) on the Wiki.
+
+---
+
 ## 🛡 License & Citation
 
 **MIT License** - Open for academic and research use.
