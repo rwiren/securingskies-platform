@@ -9,6 +9,7 @@
 [![Last Commit](https://img.shields.io/github/last-commit/rwiren/securingskies-platform?style=flat&color=blue)](https://github.com/rwiren/securingskies-platform/commits/main)
 
 **Status:** RELEASED v1.2.3 (Validated in Field Ops: "Sibbo Gauntlet" & "Jorvas Triangle")
+
 **Intelligence:** Neural (Llama 3.1 / Gemma 2) + Deterministic (RTK/Telemetry)  
 **Documentation:** [**Read the Field Reports & Benchmarks on the Wiki**](https://github.com/rwiren/securingskies-platform/wiki)
 
