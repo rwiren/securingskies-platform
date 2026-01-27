@@ -1,14 +1,14 @@
 # 🦅 SecuringSkies Platform
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-v1.0.0-success.svg)](#)
+[![Version](https://img.shields.io/badge/Version-v1.2.3-success.svg)](#)
 [![Wiki](https://img.shields.io/badge/Docs-Wiki-blueviolet.svg)](https://github.com/rwiren/securingskies-platform/wiki)
 [![Status](https://img.shields.io/badge/Status-Field_Proven-success.svg)](https://github.com/rwiren/securingskies-platform/wiki/Field%E2%80%90Reports)
 [![Python](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](#)
 [![Code Style](https://img.shields.io/badge/Code%20Style-Black-000000.svg)](https://github.com/psf/black)
 [![Last Commit](https://img.shields.io/github/last-commit/rwiren/securingskies-platform?style=flat&color=blue)](https://github.com/rwiren/securingskies-platform/commits/main)
 
-**Status:** RELEASED v1.0.0 (Validated in Field Operation "Sibbo Gauntlet")  
+**Status:** RELEASED v1.2.3 (Validated in Field Ops: "Sibbo Gauntlet" & "Jorvas Triangle")
 **Intelligence:** Neural (Llama 3.1 / Gemma 2) + Deterministic (RTK/Telemetry)  
 **Documentation:** [**Read the Field Reports & Benchmarks on the Wiki**](https://github.com/rwiren/securingskies-platform/wiki)
 
@@ -85,8 +85,8 @@ securingskies-platform/
 │   ├── static/                 # -> JS/CSS Assets
 │   └── templates/              # -> HTML Views
 │
-├── examples/                   # 🔬 VALIDATION DATA
-│   └── mixed_traffic_*.jsonl   # -> Golden Samples for HITL Replay
+├── golden_datasets/            # 🏆 VALIDATION DATA
+│   └── mission_*.jsonl         # -> High-Fidelity Jorvas Flight Logs (Ground Truth)
 │
 ├── logs/                       # 💾 TELEMETRY (GitIgnored)
 │   └── ...                     #    (Local Mission Data)
