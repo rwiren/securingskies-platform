@@ -75,8 +75,7 @@ securingskies-platform/
 ├── labs/                       # 🧪 RESEARCH & DEVELOPMENT
 │   ├── replay/                 # -> "Time Machine" (HITL Tools)
 │   │   └── replay_tool.py
-│   ├── optimizer/              # -> DSPy Prompt Optimization
-│   └── optimizer.py            # -> Training Entry Point
+│   └── optimizer.py            # -> Training Entry Point (DSPy)
 │
 ├── ops/                        # 🏗️ DEVOPS
 │   └── stack/                  # -> Docker Compose (Mosquitto/Grafana)
