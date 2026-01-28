@@ -25,5 +25,6 @@ gevent>=23.9.1         # Production WSGI Server
 pandas>=2.2.0
 matplotlib>=3.8.0
 numpy>=1.26.0
+seaborn>=0.12.0          # Statistical data visualization
 eventlet>=0.33.3
 pymavlink>=2.4.0

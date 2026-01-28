@@ -76,7 +76,9 @@ securingskies-platform/
 │   ├── replay/                 # -> "Time Machine" (HITL Tools)
 │   │   └── replay_tool.py
 │   ├── optimizer/              # -> DSPy Prompt Optimization
-│   └── optimizer.py            # -> Training Entry Point
+│   ├── optimizer.py            # -> Training Entry Point
+│   ├── eda_mission_analysis.py # -> Exploratory Data Analysis & Visualization
+│   └── compare_sensors.py      # -> Twin-Sensor Correlation Analysis
 │
 ├── ops/                        # 🏗️ DEVOPS
 │   └── stack/                  # -> Docker Compose (Mosquitto/Grafana)
@@ -120,6 +122,28 @@ Re-lives a previous mission log as if it were happening *right now*.
 # Replay a log at 1.0x speed, jumping to the interesting part
 python3 securingskies/main.py --replay logs/mission_20260124_192621.jsonl --jump --show-prompt
 ```
+
+### 3. The "Data Explorer" (EDA Analysis)
+Generate comprehensive visualizations and statistics from mission logs.
+
+```bash
+# Analyze the golden dataset with full EDA suite
+python3 labs/eda_mission_analysis.py
+
+# Analyze a custom mission file
+python3 labs/eda_mission_analysis.py --input logs/mission_YYYYMMDD_HHMMSS.jsonl --output my_analysis/
+```
+
+Generates 7 visualization plots including:
+- Multi-sensor flight paths
+- Altitude profiles and vertical speed
+- Speed analysis and heading correlation
+- Battery monitoring for all assets
+- Link quality and message rate metrics
+- Temporal distribution of events
+- Comprehensive statistical summaries
+
+See [docs/eda_plots/README.md](docs/eda_plots/README.md) for detailed documentation.
 
 ---
 
