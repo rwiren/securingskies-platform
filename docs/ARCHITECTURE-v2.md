@@ -54,7 +54,7 @@ The AI HAT+ 2 introduces a dedicated memory pool, changing the resource math.
 ## 4. Migration Recommendation
 **Start with Profile B (16GB).**
 * **Reason:** The cost difference (~) is negligible compared to the flexibility. You can always run a "Scout" mission on a "Sentinel" box, but you can't run a video mission on a memory-starved box.
-* **DevOps Benefit:** 16GB allows you to compile models and run Docker containers directly on the device without cross-compiling on a PC.
+* **DevOps Benefit:** 16GB allows you to compile models and run Docker containers directly on the device without cross-compiling on other computers.
 
 ---
 
