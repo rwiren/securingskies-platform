@@ -60,3 +60,19 @@ The AI HAT+ 2 introduces a dedicated memory pool, changing the resource math.
 
 ## 5. References
 * [Introducing the Raspberry Pi AI HAT+ 2: Generative AI on Raspberry Pi 5](https://www.raspberrypi.com/news/introducing-the-raspberry-pi-ai-hat-plus-2-generative-ai-on-raspberry-pi-5/)
+
+---
+
+## 6. The PCIe Reality (AI vs. Storage)
+**Critical Constraint:** The Raspberry Pi 5 possesses only **one** PCIe user port. The **AI HAT+ 2** consumes this port entirely. Consequently, you cannot utilize a standard NVMe HAT and the AI HAT+ 2 simultaneously without specialized hardware.
+
+### Solution Options for v2.0
+#### Option A: USB 3.1 Boot (Recommended)
+* **Configuration:** AI HAT+ 2 (PCIe) + High-Speed USB 3.1 Gen 1 SSD (e.g., Samsung T7 or M.2 SATA-to-USB adapter).
+* **Pros:** Simplest implementation, high reliability, preserves 100% of AI bandwidth.
+* **Cons:** USB 3.0 latency is slightly higher than NVMe (negligible impact on this architecture provided the Video Ring Buffer stays in RAM).
+
+#### Option B: PCIe Packet Switch (Advanced)
+* **Configuration:** Use a PCIe Packet Switch (e.g., *Pineboards HatBRICK! Commander*) to split the single lane into two.
+* **Pros:** Enables simultaneous AI HAT+ 2 and NVMe usage.
+* **Cons:** Significantly increases physical stack height (bulky), requires custom enclosure, and adds hardware cost. Bandwidth is shared (Gen 2 x1) between AI and Storage.
