@@ -78,7 +78,8 @@ securingskies-platform/
 │   ├── optimizer/              # -> DSPy Prompt Optimization
 │   ├── optimizer.py            # -> Training Entry Point
 │   ├── eda_mission_analysis.py # -> Exploratory Data Analysis & Visualization
-│   └── compare_sensors.py      # -> Twin-Sensor Correlation Analysis
+│   ├── compare_sensors.py      # -> Twin-Sensor Correlation Analysis
+│   └── compare_data_sources.py # -> Data Source Comparison Tool
 │
 ├── ops/                        # 🏗️ DEVOPS
 │   └── stack/                  # -> Docker Compose (Mosquitto/Grafana)
@@ -146,6 +147,29 @@ Generates 9 visualization plots including:
 - Comprehensive statistical summaries
 
 See [docs/eda_plots/README.md](docs/eda_plots/README.md) for detailed documentation.
+
+### 4. The "Data Comparator" (Source Analysis)
+Compare MQTT telemetry with raw flight data files to analyze data richness.
+
+```bash
+# Compare MQTT data with raw files from same flight session
+python3 labs/compare_data_sources.py
+
+# Custom paths
+python3 labs/compare_data_sources.py \
+  --mqtt golden_datasets/mission_20260127_172522.jsonl \
+  --raw-dir data/raw \
+  --output docs/data_comparison
+```
+
+Analyzes and compares:
+- **MQTT telemetry**: 110 unique fields across 8 topics (4.53 Hz)
+- **Airdata CSV**: 53 drone-specific fields (4.52 Hz)  
+- **Dronetag exports**: 14 Remote ID fields (0.96 Hz)
+
+Generates comparison visualization and detailed report highlighting differences in data richness, temporal coverage, and field availability.
+
+See [docs/data_comparison/README.md](docs/data_comparison/README.md) for analysis results.
 
 ---
 
