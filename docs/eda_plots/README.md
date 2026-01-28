@@ -49,7 +49,35 @@ Comprehensive statistical dashboard including:
 - Data source distribution
 - Operational state distribution pie chart
 
-### 8. Summary Statistics CSV (`summary_statistics.csv`)
+### 8. GNSS Accuracy Comparison (`08_gnss_accuracy_comparison.png`) 🆕
+Detailed comparison of positioning accuracy between RTK and GPS systems:
+- **Top Left**: Autel Drone RTK fix status over time (GPS/RTK Float/RTK Fixed)
+- **Top Right**: Satellite count comparison (RTK satellites vs GPS satellites)
+- **Bottom Left**: Position difference between Autel RTK and Dronetag GPS (mean: ~9.26m)
+- **Bottom Right**: GNSS accuracy distribution showing Dronetag GPS accuracy (~1.0m mean)
+
+**Key Insights:**
+- RTK Fixed status maintained throughout most of the mission
+- RTK satellite count: 30-50 satellites vs GPS: 6-12 satellites
+- Position difference between RTK and GPS systems averages 9.26 meters
+- Dronetag GPS provides consistent 1-meter accuracy
+
+### 9. Latency Analysis (`09_latency_analysis.png`) 🆕
+Comprehensive latency metrics across different data sources:
+- **Top Left**: Ground station link latency over time (mean: 1.19s)
+- **Top Right**: Latency distribution histogram (median: 1.16s)
+- **Bottom Left**: Correlation between latency and position accuracy
+- **Bottom Right**: Data rate comparison showing message intervals
+  - Ground Station: 2.00s average interval
+  - Dronetag: 1.04s average interval
+  - Autel RTK: 2.03s average interval
+
+**Key Insights:**
+- Ground station maintains low latency (~1.2s) with occasional spikes to 3s
+- Dronetag provides fastest update rate (~1Hz)
+- No significant correlation between latency and position accuracy
+
+### 10. Summary Statistics CSV (`summary_statistics.csv`)
 Machine-readable summary of key mission metrics
 
 ## Usage

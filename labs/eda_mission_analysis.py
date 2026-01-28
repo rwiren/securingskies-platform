@@ -45,6 +45,7 @@ class MissionDataAnalyzer:
         self.df_dronetag = None
         self.df_drone_osd = None
         self.df_drone_state = None
+        self.df_drone_rtk = None  # New: Autel RTK data
         
         # Create output directory
         os.makedirs(output_dir, exist_ok=True)
@@ -80,6 +81,7 @@ class MissionDataAnalyzer:
         dronetag_data = []
         drone_osd_data = []
         drone_state_data = []
+        drone_rtk_data = []  # New: Autel drone with RTK data
         
         for record in self.records:
             ts = record.get('ts')
@@ -88,6 +90,15 @@ class MissionDataAnalyzer:
             
             # Parse OwnTracks (Ground Station)
             if 'owntracks' in topic:
+                # Parse link latency
+                link_latency_str = data.get('link_latency', '0s')
+                try:
+                    link_latency = float(link_latency_str.replace('s', ''))
+                except:
+                    # Calculate from timestamp difference
+                    created_at = data.get('created_at') or data.get('tst')
+                    link_latency = (ts - created_at) if created_at else 0
+                
                 owntracks_data.append({
                     'timestamp': ts,
                     'lat': data.get('lat'),
@@ -97,7 +108,8 @@ class MissionDataAnalyzer:
                     'battery': data.get('batt'),
                     'accuracy': data.get('acc'),
                     'cog': data.get('cog', 0),  # Course over ground
-                    'type': data.get('type', 'Unknown')
+                    'type': data.get('type', 'Unknown'),
+                    'link_latency': link_latency
                 })
             
             # Parse Dronetag (Remote ID)
@@ -129,6 +141,17 @@ class MissionDataAnalyzer:
             
             # Parse Drone OSD (On-Screen Display - telemetry)
             elif 'osd' in topic:
+                # Extract RTK position data for Autel drones
+                position_state = data.get('position_state', {})
+                pos_type = data.get('pos_type', '0')
+                
+                # Determine RTK status
+                rtk_status = 'GPS'
+                if pos_type == '50':
+                    rtk_status = 'RTK_FIXED'
+                elif pos_type == '16':
+                    rtk_status = 'RTK_FLOAT'
+                
                 drone_osd_data.append({
                     'timestamp': ts,
                     'topic': topic,
@@ -140,6 +163,24 @@ class MissionDataAnalyzer:
                     'wireless_link_state': data.get('wireless_link', {}).get('sdr_link_state', 0),
                     'wireless_quality': data.get('wireless_link', {}).get('sdr_quality', 0),
                 })
+                
+                # If this is Autel drone with RTK data, add to RTK DataFrame
+                if position_state and 'rtk_lat' in position_state:
+                    drone_rtk_data.append({
+                        'timestamp': ts,
+                        'lat': data.get('latitude'),
+                        'lon': data.get('longitude'),
+                        'height': data.get('height', 0),
+                        'rtk_lat': position_state.get('rtk_lat'),
+                        'rtk_lon': position_state.get('rtk_lon'),
+                        'rtk_hgt': position_state.get('rtk_hgt'),
+                        'rtk_number': position_state.get('rtk_number', 0),
+                        'gps_number': position_state.get('gps_number', 0),
+                        'is_fixed': position_state.get('is_fixed', 0),
+                        'rtk_inpos': position_state.get('rtk_inpos', 0),
+                        'pos_type': pos_type,
+                        'rtk_status': rtk_status,
+                    })
             
             # Parse Drone State
             elif 'state' in topic and 'latitude' in data:
@@ -166,9 +207,10 @@ class MissionDataAnalyzer:
         self.df_dronetag = pd.DataFrame(dronetag_data)
         self.df_drone_osd = pd.DataFrame(drone_osd_data)
         self.df_drone_state = pd.DataFrame(drone_state_data)
+        self.df_drone_rtk = pd.DataFrame(drone_rtk_data)
         
         # Convert timestamps to datetime
-        for df in [self.df_owntracks, self.df_dronetag, self.df_drone_osd, self.df_drone_state]:
+        for df in [self.df_owntracks, self.df_dronetag, self.df_drone_osd, self.df_drone_state, self.df_drone_rtk]:
             if not df.empty and 'timestamp' in df.columns:
                 df['datetime'] = pd.to_datetime(df['timestamp'], unit='s')
                 df['mission_time_s'] = df['timestamp'] - df['timestamp'].min()
@@ -177,6 +219,7 @@ class MissionDataAnalyzer:
         print(f"  🏷️  Dronetag records: {len(self.df_dronetag)}")
         print(f"  🚁 Drone OSD records: {len(self.df_drone_osd)}")
         print(f"  📡 Drone State records: {len(self.df_drone_state)}")
+        print(f"  📡 Drone RTK records: {len(self.df_drone_rtk)}")
         
         return self
     
@@ -560,6 +603,238 @@ class MissionDataAnalyzer:
         print(f"  ✅ Saved: {output_path}")
         plt.close()
     
+    def plot_gnss_accuracy_comparison(self):
+        """Plot GNSS accuracy comparison between RTK (Autel) and GPS (Dronetag)."""
+        print("📊 Generating GNSS accuracy comparison...")
+        
+        if self.df_drone_rtk.empty or self.df_dronetag.empty:
+            print("  ⚠️  Insufficient data for GNSS accuracy comparison")
+            return
+        
+        fig, axes = plt.subplots(2, 2, figsize=(16, 10))
+        
+        # Plot 1: RTK Fix Status over time
+        ax = axes[0, 0]
+        if not self.df_drone_rtk.empty:
+            rtk_data = self.df_drone_rtk.dropna(subset=['rtk_status'])
+            if not rtk_data.empty:
+                # Map status to numeric for plotting
+                status_map = {'GPS': 0, 'RTK_FLOAT': 1, 'RTK_FIXED': 2}
+                rtk_data_plot = rtk_data.copy()
+                rtk_data_plot['status_num'] = rtk_data_plot['rtk_status'].map(status_map)
+                
+                # Create color-coded scatter plot
+                colors = {'GPS': 'red', 'RTK_FLOAT': 'orange', 'RTK_FIXED': 'green'}
+                for status, color in colors.items():
+                    mask = rtk_data_plot['rtk_status'] == status
+                    data = rtk_data_plot[mask]
+                    if not data.empty:
+                        ax.scatter(data['mission_time_s'], data['status_num'], 
+                                 c=color, label=status, alpha=0.6, s=20)
+                
+                ax.set_xlabel('Mission Time (seconds)')
+                ax.set_ylabel('Position Fix Status')
+                ax.set_yticks([0, 1, 2])
+                ax.set_yticklabels(['GPS', 'RTK Float', 'RTK Fixed'])
+                ax.set_title('Autel Drone RTK Fix Status Over Time', fontweight='bold')
+                ax.legend(loc='best')
+                ax.grid(True, alpha=0.3)
+        
+        # Plot 2: Satellite count comparison
+        ax = axes[0, 1]
+        if not self.df_drone_rtk.empty:
+            rtk_sats = self.df_drone_rtk.dropna(subset=['rtk_number'])
+            gps_sats = self.df_drone_rtk.dropna(subset=['gps_number'])
+            
+            if not rtk_sats.empty:
+                ax.plot(rtk_sats['mission_time_s'], rtk_sats['rtk_number'], 
+                       label='RTK Satellites', color='green', linewidth=2, alpha=0.7)
+            if not gps_sats.empty:
+                ax.plot(gps_sats['mission_time_s'], gps_sats['gps_number'], 
+                       label='GPS Satellites', color='blue', linewidth=2, alpha=0.7)
+            
+            ax.set_xlabel('Mission Time (seconds)')
+            ax.set_ylabel('Number of Satellites')
+            ax.set_title('Satellite Count: Autel Drone', fontweight='bold')
+            ax.legend(loc='best')
+            ax.grid(True, alpha=0.3)
+        
+        # Plot 3: Position accuracy comparison (Autel RTK vs Dronetag GPS)
+        ax = axes[1, 0]
+        
+        # Merge Autel RTK and Dronetag data by timestamp
+        if not self.df_drone_rtk.empty and not self.df_dronetag.empty:
+            autel_clean = self.df_drone_rtk[['timestamp', 'rtk_lat', 'rtk_lon']].dropna()
+            dronetag_clean = self.df_dronetag[['timestamp', 'lat', 'lon']].dropna()
+            
+            if not autel_clean.empty and not dronetag_clean.empty:
+                # Merge on timestamp (nearest neighbor within 2 seconds)
+                merged = pd.merge_asof(autel_clean.sort_values('timestamp'), 
+                                      dronetag_clean.sort_values('timestamp'), 
+                                      on='timestamp', direction='nearest', tolerance=2.0)
+                merged = merged.dropna(subset=['rtk_lat', 'lat'])
+                
+                if not merged.empty:
+                    # Calculate position error
+                    lat_scale = 111320  # meters per degree latitude
+                    lon_scale = 111320 * np.cos(np.deg2rad(merged['rtk_lat'].mean()))
+                    
+                    merged['delta_lat_m'] = (merged['rtk_lat'] - merged['lat']) * lat_scale
+                    merged['delta_lon_m'] = (merged['rtk_lon'] - merged['lon']) * lon_scale
+                    merged['position_error'] = np.sqrt(merged['delta_lat_m']**2 + merged['delta_lon_m']**2)
+                    merged['mission_time_s'] = merged['timestamp'] - merged['timestamp'].min()
+                    
+                    ax.plot(merged['mission_time_s'], merged['position_error'], 
+                           color='purple', linewidth=2, alpha=0.7)
+                    ax.axhline(y=merged['position_error'].mean(), color='red', 
+                              linestyle='--', label=f'Mean: {merged['position_error'].mean():.2f}m')
+                    ax.set_xlabel('Mission Time (seconds)')
+                    ax.set_ylabel('Position Difference (meters)')
+                    ax.set_title('Position Difference: Autel RTK vs Dronetag GPS', fontweight='bold')
+                    ax.legend()
+                    ax.grid(True, alpha=0.3)
+        
+        # Plot 4: Position accuracy histogram
+        ax = axes[1, 1]
+        
+        # Plot Dronetag GPS accuracy
+        if not self.df_dronetag.empty:
+            dronetag_acc = self.df_dronetag['accuracy'].dropna()
+            if not dronetag_acc.empty:
+                ax.hist(dronetag_acc, bins=30, alpha=0.6, color='orange', 
+                       label=f'Dronetag GPS (mean: {dronetag_acc.mean():.2f}m)', 
+                       edgecolor='black')
+        
+        # Note: Autel RTK doesn't report accuracy in the same way
+        ax.set_xlabel('Position Accuracy (meters)')
+        ax.set_ylabel('Frequency')
+        ax.set_title('GNSS Accuracy Distribution', fontweight='bold')
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+        
+        plt.tight_layout()
+        output_path = os.path.join(self.output_dir, '08_gnss_accuracy_comparison.png')
+        plt.savefig(output_path, dpi=self.OUTPUT_DPI, bbox_inches='tight')
+        print(f"  ✅ Saved: {output_path}")
+        plt.close()
+    
+    def plot_latency_analysis(self):
+        """Plot latency analysis comparing different data sources."""
+        print("📊 Generating latency analysis...")
+        
+        fig, axes = plt.subplots(2, 2, figsize=(16, 10))
+        
+        # Plot 1: Ground Station Link Latency
+        ax = axes[0, 0]
+        if not self.df_owntracks.empty and 'link_latency' in self.df_owntracks.columns:
+            latency_data = self.df_owntracks.dropna(subset=['link_latency'])
+            if not latency_data.empty:
+                ax.plot(latency_data['mission_time_s'], latency_data['link_latency'], 
+                       color='blue', linewidth=2, alpha=0.7)
+                ax.axhline(y=latency_data['link_latency'].mean(), color='red', 
+                          linestyle='--', label=f'Mean: {latency_data["link_latency"].mean():.2f}s')
+                ax.set_xlabel('Mission Time (seconds)')
+                ax.set_ylabel('Link Latency (seconds)')
+                ax.set_title('Ground Station Link Latency', fontweight='bold')
+                ax.legend()
+                ax.grid(True, alpha=0.3)
+        
+        # Plot 2: Latency Distribution
+        ax = axes[0, 1]
+        if not self.df_owntracks.empty and 'link_latency' in self.df_owntracks.columns:
+            latency_data = self.df_owntracks['link_latency'].dropna()
+            if not latency_data.empty:
+                ax.hist(latency_data, bins=30, color='skyblue', alpha=0.7, edgecolor='black')
+                ax.axvline(latency_data.mean(), color='red', linestyle='--', 
+                          label=f'Mean: {latency_data.mean():.2f}s')
+                ax.axvline(latency_data.median(), color='green', linestyle='--', 
+                          label=f'Median: {latency_data.median():.2f}s')
+                ax.set_xlabel('Link Latency (seconds)')
+                ax.set_ylabel('Frequency')
+                ax.set_title('Ground Station Latency Distribution', fontweight='bold')
+                ax.legend()
+                ax.grid(True, alpha=0.3)
+        
+        # Plot 3: Latency vs Position Accuracy (Ground Station)
+        ax = axes[1, 0]
+        if not self.df_owntracks.empty:
+            owntracks_clean = self.df_owntracks.dropna(subset=['link_latency', 'accuracy'])
+            if not owntracks_clean.empty:
+                scatter = ax.scatter(owntracks_clean['link_latency'], 
+                                    owntracks_clean['accuracy'], 
+                                    c=owntracks_clean['mission_time_s'], 
+                                    cmap='viridis', alpha=0.6, s=30)
+                cbar = plt.colorbar(scatter, ax=ax)
+                cbar.set_label('Mission Time (s)')
+                ax.set_xlabel('Link Latency (seconds)')
+                ax.set_ylabel('Position Accuracy (meters)')
+                ax.set_title('Latency vs Accuracy: Ground Station', fontweight='bold')
+                ax.grid(True, alpha=0.3)
+        
+        # Plot 4: Data rate and latency metrics
+        ax = axes[1, 1]
+        
+        # Calculate message intervals for different sources
+        message_stats = []
+        
+        if not self.df_owntracks.empty:
+            intervals = self.df_owntracks['timestamp'].diff().dropna()
+            if not intervals.empty:
+                message_stats.append({
+                    'source': 'Ground Station',
+                    'mean_interval': intervals.mean(),
+                    'std_interval': intervals.std()
+                })
+        
+        if not self.df_dronetag.empty:
+            intervals = self.df_dronetag['timestamp'].diff().dropna()
+            if not intervals.empty:
+                message_stats.append({
+                    'source': 'Dronetag',
+                    'mean_interval': intervals.mean(),
+                    'std_interval': intervals.std()
+                })
+        
+        if not self.df_drone_rtk.empty:
+            intervals = self.df_drone_rtk['timestamp'].diff().dropna()
+            if not intervals.empty:
+                message_stats.append({
+                    'source': 'Autel RTK',
+                    'mean_interval': intervals.mean(),
+                    'std_interval': intervals.std()
+                })
+        
+        if message_stats:
+            sources = [s['source'] for s in message_stats]
+            mean_intervals = [s['mean_interval'] for s in message_stats]
+            std_intervals = [s['std_interval'] for s in message_stats]
+            
+            x = np.arange(len(sources))
+            width = 0.35
+            
+            bars = ax.bar(x, mean_intervals, width, yerr=std_intervals, 
+                         alpha=0.7, capsize=5, color=['blue', 'orange', 'green'])
+            
+            ax.set_xlabel('Data Source')
+            ax.set_ylabel('Mean Message Interval (seconds)')
+            ax.set_title('Data Rate Comparison (Message Interval)', fontweight='bold')
+            ax.set_xticks(x)
+            ax.set_xticklabels(sources, rotation=15, ha='right')
+            ax.grid(True, alpha=0.3, axis='y')
+            
+            # Add value labels on bars
+            for bar in bars:
+                height = bar.get_height()
+                ax.text(bar.get_x() + bar.get_width()/2., height,
+                       f'{height:.2f}s',
+                       ha='center', va='bottom', fontsize=10)
+        
+        plt.tight_layout()
+        output_path = os.path.join(self.output_dir, '09_latency_analysis.png')
+        plt.savefig(output_path, dpi=self.OUTPUT_DPI, bbox_inches='tight')
+        print(f"  ✅ Saved: {output_path}")
+        plt.close()
+    
     def generate_summary_statistics(self):
         """Generate and save summary statistics."""
         print("📊 Generating summary statistics...")
@@ -771,6 +1046,8 @@ class MissionDataAnalyzer:
         self.plot_battery_monitoring()
         self.plot_link_quality()
         self.plot_temporal_distribution()
+        self.plot_gnss_accuracy_comparison()  # New: GNSS accuracy analysis
+        self.plot_latency_analysis()  # New: Latency analysis
         self.generate_summary_statistics()
         
         print("\n" + "="*80)

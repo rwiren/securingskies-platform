@@ -134,13 +134,15 @@ python3 labs/eda_mission_analysis.py
 python3 labs/eda_mission_analysis.py --input logs/mission_YYYYMMDD_HHMMSS.jsonl --output my_analysis/
 ```
 
-Generates 7 visualization plots including:
+Generates 9 visualization plots including:
 - Multi-sensor flight paths
 - Altitude profiles and vertical speed
 - Speed analysis and heading correlation
 - Battery monitoring for all assets
 - Link quality and message rate metrics
 - Temporal distribution of events
+- **GNSS accuracy comparison (RTK vs GPS)** 🆕
+- **Latency analysis across data sources** 🆕
 - Comprehensive statistical summaries
 
 See [docs/eda_plots/README.md](docs/eda_plots/README.md) for detailed documentation.
