@@ -25,6 +25,11 @@ plt.rcParams['figure.dpi'] = 100
 class MissionDataAnalyzer:
     """Analyzes and visualizes SecuringSkies mission telemetry data."""
     
+    # Configuration constants
+    OUTPUT_DPI = 150
+    BATTERY_WARNING_THRESHOLD = 20  # Battery warning level (%)
+    TEMPORAL_BIN_SIZE_SECONDS = 10  # Bin size for temporal analysis
+    
     def __init__(self, jsonl_path, output_dir='docs/eda_plots'):
         """
         Initialize the analyzer.
@@ -54,9 +59,15 @@ class MissionDataAnalyzer:
         with open(self.jsonl_path, 'r') as f:
             for line in f:
                 try:
-                    self.records.append(json.loads(line))
+                    record = json.loads(line)
+                    # Validate basic structure
+                    if 'ts' in record and 'topic' in record and 'data' in record:
+                        self.records.append(record)
                 except json.JSONDecodeError:
                     continue
+        
+        if not self.records:
+            raise ValueError(f"No valid records found in {self.jsonl_path}")
         
         print(f"✅ Loaded {len(self.records)} records")
         return self
@@ -223,7 +234,7 @@ class MissionDataAnalyzer:
         
         plt.tight_layout()
         output_path = os.path.join(self.output_dir, '01_flight_paths.png')
-        plt.savefig(output_path, dpi=150, bbox_inches='tight')
+        plt.savefig(output_path, dpi=self.OUTPUT_DPI, bbox_inches='tight')
         print(f"  ✅ Saved: {output_path}")
         plt.close()
     
@@ -295,7 +306,7 @@ class MissionDataAnalyzer:
         
         plt.tight_layout()
         output_path = os.path.join(self.output_dir, '02_altitude_profiles.png')
-        plt.savefig(output_path, dpi=150, bbox_inches='tight')
+        plt.savefig(output_path, dpi=self.OUTPUT_DPI, bbox_inches='tight')
         print(f"  ✅ Saved: {output_path}")
         plt.close()
     
@@ -358,7 +369,7 @@ class MissionDataAnalyzer:
         
         plt.tight_layout()
         output_path = os.path.join(self.output_dir, '03_speed_analysis.png')
-        plt.savefig(output_path, dpi=150, bbox_inches='tight')
+        plt.savefig(output_path, dpi=self.OUTPUT_DPI, bbox_inches='tight')
         print(f"  ✅ Saved: {output_path}")
         plt.close()
     
@@ -377,8 +388,8 @@ class MissionDataAnalyzer:
                        color='red', linewidth=2, marker='o', markersize=3)
                 ax.fill_between(battery_data['mission_time_s'], battery_data['battery'], 
                                alpha=0.3, color='red')
-                ax.axhline(y=20, color='orange', linestyle='--', 
-                          label='Warning Level (20%)', alpha=0.7)
+                ax.axhline(y=self.BATTERY_WARNING_THRESHOLD, color='orange', linestyle='--', 
+                          label=f'Warning Level ({self.BATTERY_WARNING_THRESHOLD}%)', alpha=0.7)
                 ax.set_xlabel('Mission Time (seconds)')
                 ax.set_ylabel('Battery Level (%)')
                 ax.set_title('Drone Battery Level', fontweight='bold')
@@ -395,8 +406,8 @@ class MissionDataAnalyzer:
                        color='blue', linewidth=2, marker='o', markersize=3)
                 ax.fill_between(battery_data['mission_time_s'], battery_data['battery'], 
                                alpha=0.3, color='blue')
-                ax.axhline(y=20, color='orange', linestyle='--', 
-                          label='Warning Level (20%)', alpha=0.7)
+                ax.axhline(y=self.BATTERY_WARNING_THRESHOLD, color='orange', linestyle='--', 
+                          label=f'Warning Level ({self.BATTERY_WARNING_THRESHOLD}%)', alpha=0.7)
                 ax.set_xlabel('Mission Time (seconds)')
                 ax.set_ylabel('Battery Level (%)')
                 ax.set_title('Ground Station Battery Level', fontweight='bold')
@@ -406,7 +417,7 @@ class MissionDataAnalyzer:
         
         plt.tight_layout()
         output_path = os.path.join(self.output_dir, '04_battery_monitoring.png')
-        plt.savefig(output_path, dpi=150, bbox_inches='tight')
+        plt.savefig(output_path, dpi=self.OUTPUT_DPI, bbox_inches='tight')
         print(f"  ✅ Saved: {output_path}")
         plt.close()
     
@@ -474,7 +485,7 @@ class MissionDataAnalyzer:
         
         plt.tight_layout()
         output_path = os.path.join(self.output_dir, '05_link_quality.png')
-        plt.savefig(output_path, dpi=150, bbox_inches='tight')
+        plt.savefig(output_path, dpi=self.OUTPUT_DPI, bbox_inches='tight')
         print(f"  ✅ Saved: {output_path}")
         plt.close()
     
@@ -493,7 +504,8 @@ class MissionDataAnalyzer:
             relative_times = [(ts - min_ts) for ts in all_timestamps]
             
             # Create bins for message rate
-            bins = np.arange(0, max(relative_times) + 10, 10)  # 10-second bins
+            bin_size = self.TEMPORAL_BIN_SIZE_SECONDS
+            bins = np.arange(0, max(relative_times) + bin_size, bin_size)
             hist, edges = np.histogram(relative_times, bins=bins)
             centers = (edges[:-1] + edges[1:]) / 2
             
@@ -544,7 +556,7 @@ class MissionDataAnalyzer:
         
         plt.tight_layout()
         output_path = os.path.join(self.output_dir, '06_temporal_distribution.png')
-        plt.savefig(output_path, dpi=150, bbox_inches='tight')
+        plt.savefig(output_path, dpi=self.OUTPUT_DPI, bbox_inches='tight')
         print(f"  ✅ Saved: {output_path}")
         plt.close()
     
@@ -623,11 +635,16 @@ class MissionDataAnalyzer:
               Mean: {speed_data.mean():.2f} m/s
               Max: {speed_data.max():.2f} m/s
             
-            Battery:
+            Battery:"""
+            
+            if not battery_data.empty:
+                stats_text += f"""
               Start: {battery_data.iloc[0]:.0f}%
               End: {battery_data.iloc[-1]:.0f}%
-              Drop: {battery_data.iloc[0] - battery_data.iloc[-1]:.0f}%
-            """
+              Drop: {battery_data.iloc[0] - battery_data.iloc[-1]:.0f}%"""
+            else:
+                stats_text += """
+              No battery data available"""
             
             ax.text(0.05, 0.95, stats_text, transform=ax.transAxes, 
                    fontsize=10, verticalalignment='top', fontfamily='monospace',
@@ -650,11 +667,16 @@ class MissionDataAnalyzer:
               Mean: {height_data.mean():.2f} m
               Max: {height_data.max():.2f} m
             
-            Battery:
+            Battery:"""
+            
+            if not battery_data.empty:
+                stats_text += f"""
               Start: {battery_data.iloc[0]:.0f}%
               End: {battery_data.iloc[-1]:.0f}%
-              Drop: {battery_data.iloc[0] - battery_data.iloc[-1]:.0f}%
-            """
+              Drop: {battery_data.iloc[0] - battery_data.iloc[-1]:.0f}%"""
+            else:
+                stats_text += """
+              No battery data available"""
             
             ax.text(0.05, 0.95, stats_text, transform=ax.transAxes, 
                    fontsize=10, verticalalignment='top', fontfamily='monospace',
@@ -709,7 +731,7 @@ class MissionDataAnalyzer:
         
         plt.tight_layout()
         output_path = os.path.join(self.output_dir, '07_summary_statistics.png')
-        plt.savefig(output_path, dpi=150, bbox_inches='tight')
+        plt.savefig(output_path, dpi=self.OUTPUT_DPI, bbox_inches='tight')
         print(f"  ✅ Saved: {output_path}")
         plt.close()
         
