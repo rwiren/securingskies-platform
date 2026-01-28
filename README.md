@@ -79,7 +79,8 @@ securingskies-platform/
 │   ├── optimizer.py            # -> Training Entry Point
 │   ├── eda_mission_analysis.py # -> Exploratory Data Analysis & Visualization
 │   ├── compare_sensors.py      # -> Twin-Sensor Correlation Analysis
-│   └── compare_data_sources.py # -> Data Source Comparison Tool
+│   ├── compare_data_sources.py # -> Data Source Comparison Tool
+│   └── analyze_latency_effects.py # -> Latency Error Decomposition
 │
 ├── ops/                        # 🏗️ DEVOPS
 │   └── stack/                  # -> Docker Compose (Mosquitto/Grafana)
@@ -170,6 +171,34 @@ Analyzes and compares:
 Generates comparison visualization and detailed report highlighting differences in data richness, temporal coverage, and field availability.
 
 See [docs/data_comparison/README.md](docs/data_comparison/README.md) for analysis results.
+
+### 5. The "Latency Analyzer" (Error Decomposition)
+Decompose sensor position error into Hardware Gap and Time Gap components.
+
+```bash
+# Analyze latency effects on sensor accuracy
+python3 labs/analyze_latency_effects.py
+
+# Custom paths
+python3 labs/analyze_latency_effects.py \
+  --mqtt golden_datasets/mission_20260127_172522.jsonl \
+  --output docs/latency_analysis
+```
+
+Implements the data fusion formula:
+```
+Total Error = √((Hardware Gap)² + (Speed × Latency)²)
+```
+
+**Key Findings:**
+- Hardware Gap (Sensor Accuracy): 2.26m
+- Network Latency: 1.19s
+- At 10 m/s cruise speed: Total error = 12.09m (2.26m sensor + 11.87m latency)
+- Altitude error remains low (~4.36m) - independent of latency
+
+Generates comprehensive visualization showing error decomposition by flight scenario and validates that position accuracy is HIGHLY dependent on latency while altitude accuracy is mostly independent.
+
+See [docs/latency_analysis/README.md](docs/latency_analysis/README.md) for detailed analysis.
 
 ---
 
