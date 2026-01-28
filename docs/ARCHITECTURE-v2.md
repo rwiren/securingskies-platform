@@ -51,10 +51,12 @@ The AI HAT+ 2 introduces a dedicated memory pool, changing the resource math.
 
 ---
 
-## 5. References
-* [Introducing the Raspberry Pi AI HAT+ 2: Generative AI on Raspberry Pi 5](https://www.raspberrypi.com/news/introducing-the-raspberry-pi-ai-hat-plus-2-generative-ai-on-raspberry-pi-5/)
-
 ## 4. Migration Recommendation
 **Start with Profile B (16GB).**
 * **Reason:** The cost difference (~) is negligible compared to the flexibility. You can always run a "Scout" mission on a "Sentinel" box, but you can't run a video mission on a memory-starved box.
 * **DevOps Benefit:** 16GB allows you to compile models and run Docker containers directly on the device without cross-compiling on a PC.
+
+---
+
+## 5. References
+* [Introducing the Raspberry Pi AI HAT+ 2: Generative AI on Raspberry Pi 5](https://www.raspberrypi.com/news/introducing-the-raspberry-pi-ai-hat-plus-2-generative-ai-on-raspberry-pi-5/)
