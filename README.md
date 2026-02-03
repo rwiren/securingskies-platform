@@ -205,4 +205,4 @@ We follow a lean Research & Development workflow focused on the **nightly** bran
     ```
 
 ---
-*SecuringSkies Research Grid | Status: main v1.2.3*
+*SecuringSkies Research Grid | Status: main v1.2.7*
