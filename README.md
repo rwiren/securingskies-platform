@@ -8,7 +8,7 @@
 [![Code Style](https://img.shields.io/badge/Code%20Style-Black-000000.svg)](https://github.com/psf/black)
 [![Last Commit](https://img.shields.io/github/last-commit/rwiren/securingskies-platform?style=flat&color=blue)](https://github.com/rwiren/securingskies-platform/commits/main)
 
-**Status:** RELEASED v1.2.3 (Validated in Field Ops: "Sibbo Gauntlet" & "Jorvas Triangle")
+**Status:** RELEASED v1.2.7.
 
 **Intelligence:** Neural (Llama 3.1 / Gemma 2) + Deterministic (RTK/Telemetry)  
 **Documentation:** [**Read the Field Reports & Benchmarks on the Wiki**](https://github.com/rwiren/securingskies-platform/wiki)
@@ -205,4 +205,4 @@ We follow a lean Research & Development workflow focused on the **nightly** bran
     ```
 
 ---
-*SecuringSkies Research Grid | Status: main v1.2.3*
+*SecuringSkies Research Grid | Status: main v1.2.7*
