@@ -1,66 +1,52 @@
 """
-SecuringSkies Web Server
-========================
-Version: 0.9.8 (Nightly)
-Role: WebSocket Bridge for Real-Time Tactical Map.
-Features:
-  - Recursive GPS Extraction (Autel/DroneTag compatibility)
-  - Auto-Icon Classification (Blue/Red/Orange/Cyan)
-  - Null Island Filtering
-
-Author: Ghost Commander
+SecuringSkies Unified Bridge v1.3.5
+===================================
+Fixes: 
+1. Reads CESIUM_TOKEN from .env
+2. Passes token securely to HTML
+3. Uses Gevent for stability
 """
-
-import eventlet
-eventlet.monkey_patch()
+from gevent import monkey
+monkey.patch_all()
 
 import os
 import json
 import logging
 import time
+from threading import Lock
 from flask import Flask, render_template
 from flask_socketio import SocketIO
 import paho.mqtt.client as mqtt
 from dotenv import load_dotenv
 
 # 1. CONFIGURATION
-# ----------------
-load_dotenv()
+# Force load .env from project root (one level up from 'web/')
+base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+load_dotenv(os.path.join(base_dir, '.env'))
+
 MQTT_BROKER = os.getenv("MQTT_BROKER", "192.168.192.100") 
 MQTT_PORT = int(os.getenv("MQTT_PORT", 1883))
+MQTT_USER = os.getenv("MQTT_USERNAME")
+MQTT_PASS = os.getenv("MQTT_PASSWORD")
+CESIUM_TOKEN = os.getenv("CESIUM_TOKEN", "") # <--- LOADED HERE
 
-# Subscribe to ALL relevant telemetry streams
-TOPICS = [
-    ("owntracks/#", 0),       # Phones/Team
-    ("dronetag/#", 0),        # Remote ID
-    ("thing/product/#", 0),   # Autel Enterprise (Control & UAV)
-    ("pixhawk/#", 0)          # MAVlink protocol
-]
+TOPICS = [("owntracks/#", 0), ("dronetag/#", 0), ("thing/product/#", 0), ("pixhawk/#", 0)]
 
-# 2. SETUP
-# --------
+# 2. SERVER
 app = Flask(__name__)
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='gevent')
 
-# Reduce noise, keep it professional
-logging.basicConfig(level=logging.WARNING)
-logger = logging.getLogger("web.server")
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
+logger = logging.getLogger("TacticalServer")
 
-# In-Memory Tactical State
 fleet_state = {}
+thread_lock = Lock()
 
-# 3. HELPER FUNCTIONS
-# -------------------
+# 3. PARSING LOGIC
 def find_val_recursive(data, targets):
-    """
-    The 'Nuclear Option' for JSON parsing. 
-    Recursively hunts for specific keys (lat/lon) anywhere in the data structure.
-    Solves the nested 'data.data.gps' issue with Autel.
-    """
     if isinstance(data, dict):
         for k, v in data.items():
-            if k.lower() in targets:
-                return v
+            if k.lower() in targets: return v
             if isinstance(v, (dict, list)):
                 found = find_val_recursive(v, targets)
                 if found is not None: return found
@@ -70,108 +56,75 @@ def find_val_recursive(data, targets):
             if found is not None: return found
     return None
 
-def get_coords(payload):
-    """Extracts standardized Lat/Lon regardless of vendor format."""
+def get_telemetry(payload):
     lat = find_val_recursive(payload, ["lat", "latitude", "gps_lat"])
     lon = find_val_recursive(payload, ["lon", "longitude", "gps_lon"])
-    return lat, lon
+    alt = find_val_recursive(payload, ["height", "alt", "altitude", "ned_altitude", "rel_alt"])
+    if alt is None: alt = 0.0
+    return lat, lon, alt
 
-# 4. MQTT HANDLERS
-# ----------------
+# 4. MQTT LOGIC
 def on_connect(client, userdata, flags, rc, properties=None):
     if rc == 0:
-        print(f"✅ DASHBOARD LINKED: {MQTT_BROKER}")
-        client.subscribe(TOPICS)
+        logger.info(f"✅ UPLINK ESTABLISHED: {MQTT_BROKER}")
+        client.subscribe("#")
     else:
-        logger.error(f"❌ Connection Failed code={rc}")
+        logger.error(f"❌ UPLINK FAILED: {rc}")
 
 def on_message(client, userdata, msg):
     global fleet_state
     try:
         topic = msg.topic
         payload = json.loads(msg.payload.decode())
-        
-        tid = "UNK"
-        lat, lon = get_coords(payload)
+        try: payload = json.loads(msg.payload.decode())
+        except: return
+
+        lat, lon, alt = get_telemetry(payload)
+        tid = topic.split('/')[-1]
         icon = "question"
         
-        # --- CLASSIFICATION LOGIC ---
-        
-        # A. OwnTracks (Ground Assets / Phones)
         if "owntracks" in topic:
-            tid = payload.get("tid", topic.split("/")[-1])
-            icon = "mobile" # Blue
-            
-        # B. DroneTag (Hostile / Remote ID)
+            if payload.get("_type") != "location": return
+            tid = payload.get("tid", tid)
+            icon = "mobile"
         elif "dronetag" in topic:
             tid = payload.get("id", "RID")
-            icon = "plane" # Red
-
-        # C. Autel Enterprise (Mixed Air/Ground)
-        elif "thing/product" in topic:
+            icon = "plane"
+        elif "product" in topic:
             parts = topic.split('/')
-            # Topic format: thing/product/{SN}/{type}
-            if len(parts) >= 3:
-                tid = parts[2]
-            else:
-                tid = "AUTEL_UNK"
-            
-            # Smart Controller vs Drone distinction
-            if tid.startswith("TH"): 
-                icon = "controller" # Cyan (Ground Pilot)
-                tid += " (RC)"
-            else:
-                icon = "helicopter" # Orange (Air Asset)
-        # D. MAVLink / Pixhawk (General Drones)
-        elif "pixhawk" in topic:
-            tid = payload.get("tid", "PX4-UNK")
-            icon = "helicopter" # Orange
+            if len(parts) >= 3: tid = parts[2]
+            if tid.startswith("TH"): icon = "controller"; tid += "-RC"; alt = 0
+            else: icon = "helicopter"
 
-        # --- UPDATE STATE ---
         if lat is not None and lon is not None:
-            lat = float(lat)
-            lon = float(lon)
-            
-            # Filter "Null Island" (0,0) noise
-            if abs(lat) > 1.0: 
-                fleet_state[tid] = {
-                    "tid": tid, 
-                    "lat": lat, 
-                    "lon": lon, 
-                    "icon": icon, 
-                    "last_seen": time.time()
-                }
-                # Real-time push to Browser
-                socketio.emit('update', fleet_state[tid])
-            
-    except Exception:
-        # Silently drop malformed packets to keep server stable
-        pass 
+            if abs(float(lat)) > 1.0: 
+                with thread_lock:
+                    fleet_state[tid] = {
+                        "tid": tid, "lat": float(lat), "lon": float(lon), 
+                        "alt": float(alt), "icon": icon, "ts": time.time()
+                    }
+                    socketio.emit('update', fleet_state[tid])
+    except: pass 
 
-# 5. WEB ROUTES
-# -------------
+# 5. ROUTE
 @app.route('/')
 def index():
-    return render_template('index.html')
+    # INJECT TOKEN INTO HTML
+    return render_template('unified_map.html', cesium_token=CESIUM_TOKEN)
 
-# 6. MAIN BOOT
-# ------------
+# 6. LAUNCH
 def start_mqtt():
     client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
     client.on_connect = on_connect
     client.on_message = on_message
-    
-    user = os.getenv("MQTT_USERNAME")
-    pw = os.getenv("MQTT_PASSWORD")
-    if user and pw: client.username_pw_set(user, pw)
-    
+    if MQTT_USER and MQTT_PASS: client.username_pw_set(MQTT_USER, MQTT_PASS)
     try:
         client.connect(MQTT_BROKER, MQTT_PORT, 60)
         client.loop_start()
     except Exception as e:
-        print(f"🔥 CRITICAL: MQTT Failed: {e}")
+        logger.critical(f"🔥 MQTT FAIL: {e}")
 
 if __name__ == '__main__':
     start_mqtt()
-    print(f"🚀 TACTICAL DASHBOARD v0.9.8 active at http://localhost:5000")
+    logger.info(f"🚀 UNIFIED DASHBOARD: http://localhost:5000")
     socketio.run(app, host='0.0.0.0', port=5000)
