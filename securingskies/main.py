@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-SecuringSkies Platform v1.0.2 (Field Ops Release)
+SecuringSkies Platform v1.2.7 (Field Ops Release)
 =================================================
 Role: Bootloader & Command Interface.
 Status: PRODUCTION (Full Documentation)
@@ -89,7 +89,7 @@ def main():
     
     # CLI Argument Definition
     parser = argparse.ArgumentParser(
-        description="🦅 GHOST COMMANDER v1.0.2 - Modular AGCS Platform",
+        description="🦅 GHOST COMMANDER v1.2.7 - Modular AGCS Platform",
         formatter_class=argparse.RawTextHelpFormatter,
         epilog="""
 SCIENTIFIC TELEMETRY STANDARDS:
@@ -167,7 +167,7 @@ CLOUD OPERATIONS (securingskies.eu):
         except FileNotFoundError:
             console.print("[red]❌ Replay Tool not found in labs/replay/replay_tool.py[/red]")
 
-    console.print(Panel.fit(f"[bold yellow]🦅 GHOST COMMANDER v1.0.2 (Modular Platform)[/bold yellow]"))
+    console.print(Panel.fit(f"[bold yellow]🦅 GHOST COMMANDER v1.2.7 (Modular Platform)[/bold yellow]"))
     
     ai_engine = "openai" if args.cloud else "ollama"
     model_name = "gpt-4o" if args.cloud else args.model.replace("ollama:", "")
