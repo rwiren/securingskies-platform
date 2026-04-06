@@ -1,15 +1,10 @@
 """
 SecuringSkies Platform - Ghost Commander (The Brain)
 ====================================================
-Version: 1.0.5 (Autel Controller Latency)
+Version: 1.2.7
 Status: PRODUCTION - FULL TELEMETRY
 Description: Central Logic Unit handling Data Ingestion, 
              Dynamic Persona Loading (RAG), and Auditing.
-             
-CHANGELOG v1.0.5:
-- Added Latency KPI for Autel Smart Controller (via 'sn' topic).
-- Maintained Dronetag Latency logic.
-- Preserved 'Constitutional Guardrails'.
 """
 
 import json

@@ -1,6 +1,8 @@
 """
 SecuringSkies Platform - Hue Lighting Controller
 ================================================
+Version: 1.2.7
+Status: PRODUCTION
 Role: Ambient Status Display
 Feature Parity: Restores specific color codes from Legacy v47.
 Fixes: Added Circuit Breaker pattern to prevent Timeouts from crashing Main.

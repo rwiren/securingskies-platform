@@ -1,6 +1,8 @@
 """
 SecuringSkies Platform - Black Box Recorder
 ===========================================
+Version: 1.2.7
+Status: PRODUCTION
 Role: Forensic Logging (JSONL Standard)
 """
 

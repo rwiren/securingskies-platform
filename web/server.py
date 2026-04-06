@@ -1,6 +1,6 @@
 """
-SecuringSkies Unified Bridge v1.3.5
-===================================
+SecuringSkies Unified Bridge v1.2.7
+====================================
 Fixes: 
 1. Reads CESIUM_TOKEN from .env
 2. Passes token securely to HTML

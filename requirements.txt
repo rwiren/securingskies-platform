@@ -1,5 +1,5 @@
 # 🦅 SecuringSkies Platform Dependencies
-# Status: PLATFORM v0.9.4
+# Status: PLATFORM v1.2.7
 
 # --- Core Infrastructure ---
 paho-mqtt>=2.0.0       # CRITICAL: Must be v2.0+ for CallbackAPIVersion.VERSION2

@@ -1,0 +1,118 @@
+name: CI
+
+on:
+  push:
+    branches: ["main", "nightly"]
+  pull_request:
+    branches: ["main", "nightly"]
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 1. Python linting (ruff)
+  # ─────────────────────────────────────────────────────────────────────────────
+  lint:
+    name: Lint Python
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Run ruff
+        run: ruff check .
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 2. Doc integrity — verify every labs/*.py referenced in docs actually exists
+  # ─────────────────────────────────────────────────────────────────────────────
+  doc-scripts:
+    name: Check doc script references
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify labs/*.py references in docs/
+        run: |
+          set -e
+          FAIL=0
+          # Extract all "labs/something.py" patterns from markdown docs
+          while IFS= read -r ref; do
+            if [ ! -f "$ref" ]; then
+              echo "❌ Referenced in docs but missing: $ref"
+              FAIL=1
+            else
+              echo "✅ Found: $ref"
+            fi
+          done < <(grep -roh 'labs/[A-Za-z0-9_/]*\.py' docs/ README.md wiki/ 2>/dev/null | sort -u)
+          exit $FAIL
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 3. Version consistency — CITATION.cff and requirements.txt must match README
+  # ─────────────────────────────────────────────────────────────────────────────
+  version-check:
+    name: Check version consistency
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract canonical version from README.md
+        id: readme_version
+        run: |
+          # Looks for: [![Version](https://img.shields.io/badge/Version-vX.Y.Z-...
+          VERSION=$(grep -oP '(?<=Version-v)[0-9]+\.[0-9]+\.[0-9]+' README.md | head -1)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "README version: $VERSION"
+
+      - name: Check CITATION.cff version
+        run: |
+          CANONICAL="${{ steps.readme_version.outputs.version }}"
+          CITATION_VER=$(grep -oP '(?<=version: )[0-9]+\.[0-9]+\.[0-9]+' CITATION.cff | head -1)
+          echo "CITATION.cff version: $CITATION_VER"
+          if [ "$CITATION_VER" != "$CANONICAL" ]; then
+            echo "❌ CITATION.cff version ($CITATION_VER) does not match README ($CANONICAL)"
+            exit 1
+          fi
+          echo "✅ CITATION.cff matches README"
+
+      - name: Check requirements.txt header version
+        run: |
+          CANONICAL="${{ steps.readme_version.outputs.version }}"
+          REQ_VER=$(grep -oP '(?<=PLATFORM v)[0-9]+\.[0-9]+\.[0-9]+' requirements.txt | head -1)
+          echo "requirements.txt version: $REQ_VER"
+          if [ "$REQ_VER" != "$CANONICAL" ]; then
+            echo "❌ requirements.txt header version ($REQ_VER) does not match README ($CANONICAL)"
+            exit 1
+          fi
+          echo "✅ requirements.txt matches README"
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 4. Sync wiki/ directory to the GitHub Wiki (main branch only)
+  # ─────────────────────────────────────────────────────────────────────────────
+  wiki-sync:
+    name: Sync wiki pages
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [lint, doc-scripts, version-check]
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Push wiki/ to GitHub Wiki
+        uses: Andrew-Chen-Wang/github-wiki-action@v4
+        with:
+          path: wiki/
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WIKI_PUSH_STRATEGY: COMMIT_EACH_FILE
