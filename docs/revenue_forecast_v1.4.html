@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ADS-B Integrity Service — Global Revenue Forecast v1.4</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #060913; color: #d1d5db; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; padding: 24px; line-height: 1.5; }
+header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px; margin-bottom: 24px; border-bottom: 1px solid #1e293b; padding-bottom: 16px; }
+h1 { color: #f3f4f6; font-size: 1.5em; font-weight: 800; letter-spacing: -0.025em; }
+.subtitle { color: #9ca3af; font-size: 0.85em; }
+.top-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.ctrl-group { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 6px 12px; display: flex; align-items: center; gap: 8px; }
+.ctrl-group label { margin: 0; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.7em; color: #38bdf8; }
+.ctrl-group select, .ctrl-group button { background: #1e293b; color: #f3f4f6; border: 1px solid #475569; border-radius: 4px; padding: 4px 8px; font-family: inherit; font-size: 0.8em; cursor: pointer; }
+.ctrl-group button:hover { background: #334155; }
+.ctrl-group button.active { background: #38bdf8; color: #0f172a; border-color: #38bdf8; }
+.container { max-width: 1400px; margin: 0 auto; }
+.grid { display: grid; grid-template-columns: 340px 1fr; gap: 20px; }
+@media (max-width: 1024px) { .grid { grid-template-columns: 1fr; } }
+.panel { background: #0f172a; border: 1px solid #1e293b; border-radius: 12px; padding: 18px; }
+.panel h2 { color: #38bdf8; font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 14px; border-bottom: 1px solid #1e293b; padding-bottom: 8px; }
+label { display: block; font-size: 0.75em; color: #9ca3af; margin-top: 12px; margin-bottom: 4px; }
+input[type=range] { width: 100%; accent-color: #38bdf8; height: 5px; border-radius: 3px; appearance: none; background: #1e293b; }
+.val { float: right; color: #38bdf8; font-weight: 700; background: rgba(56,189,248,0.1); padding: 1px 5px; border-radius: 4px; font-size: 0.95em; }
+canvas { width: 100%; height: 300px; background: #0b0f19; border-radius: 8px; border: 1px solid #1e293b; display: block; }
+.results { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 16px; }
+.metric { background: #0b0f19; border: 1px solid #1e293b; border-radius: 8px; padding: 14px; text-align: center; }
+.metric .value { font-size: 1.4em; font-weight: 800; color: #34d399; }
+.metric .label { font-size: 0.7em; color: #6b7280; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.8em; }
+th, td { padding: 6px 10px; border-bottom: 1px solid #1e293b; text-align: right; }
+th { color: #6b7280; font-weight: 600; text-transform: uppercase; font-size: 0.75em; border-bottom: 2px solid #1e293b; }
+th:first-child, td:first-child { text-align: left; color: #f3f4f6; }
+.highlight { color: #38bdf8; font-weight: bold; }
+tr:hover { background: rgba(30,41,59,0.4); }
+.tornado { margin-top: 16px; }
+.tornado-bar { display: flex; align-items: center; margin: 3px 0; font-size: 0.75em; }
+.tornado-label { width: 120px; text-align: right; padding-right: 8px; color: #9ca3af; }
+.tornado-fill { height: 16px; border-radius: 3px; background: #38bdf8; min-width: 2px; transition: width 0.3s; }
+.tornado-val { padding-left: 6px; color: #38bdf8; font-weight: 600; }
+.scenarios { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.scenarios button { background: #1e293b; border: 1px solid #334155; color: #d1d5db; padding: 4px 10px; border-radius: 4px; font-size: 0.75em; cursor: pointer; font-family: inherit; }
+.scenarios button:hover { border-color: #38bdf8; color: #38bdf8; }
+.scenarios button.saved { border-color: #34d399; color: #34d399; }
+.export-row { display: flex; gap: 8px; margin-top: 12px; }
+.export-row button { background: #1e293b; border: 1px solid #334155; color: #d1d5db; padding: 6px 12px; border-radius: 6px; font-size: 0.75em; cursor: pointer; font-family: inherit; }
+.export-row button:hover { border-color: #38bdf8; color: #38bdf8; }
+.breakeven-badge { display: inline-block; background: rgba(52,211,153,0.1); border: 1px solid #34d399; color: #34d399; padding: 2px 8px; border-radius: 4px; font-size: 0.75em; font-weight: 600; margin-left: 8px; }
+.monte-carlo-band { position: relative; }
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+  <div>
+    <h1>📡 ADS-B Integrity — Revenue Forecast v1.4</h1>
+    <p class="subtitle">Multi-region · Scenarios · Sensitivity · Monte Carlo · Seeded PRNG · Breakeven NPV</p>
+  </div>
+  <div class="top-controls">
+    <div class="ctrl-group">
+      <label>Region</label>
+      <select id="region">
+        <option value="eu" selected>Europe (€)</option>
+        <option value="na">N. America ($)</option>
+        <option value="apac">APAC ($)</option>
+        <option value="global">Global ($)</option>
+      </select>
+    </div>
+    <div class="ctrl-group">
+      <label>Monte Carlo</label>
+      <button id="mc-toggle" onclick="toggleMC()">OFF</button>
+      <button id="mc-reseed" onclick="reseedMC()" style="display:none">🎲</button>
+    </div>
+  </div>
+</header>
+
+<div class="grid">
+<div>
+  <div class="panel">
+    <h2>📊 Market</h2>
+    <label>Addressable sites <span class="val" id="v-sites">500K</span></label>
+    <input type="range" id="sites" min="100000" max="10000000" step="50000" value="500000">
+    <label>Penetration Y10 (%) <span class="val" id="v-pen">5%</span></label>
+    <input type="range" id="pen" min="1" max="30" value="5">
+    <label>Ramp start (year) <span class="val" id="v-ramp">2</span></label>
+    <input type="range" id="ramp" min="1" max="5" value="2">
+    <label>ARPU/month (<span class="cur">€</span>) <span class="val" id="v-arpu">50</span></label>
+    <input type="range" id="arpu" min="10" max="200" step="5" value="50">
+    <label>HW cost/site (<span class="cur">€</span>) <span class="val" id="v-hw">75</span></label>
+    <input type="range" id="hw" min="20" max="200" step="5" value="75">
+    <label>Churn (%) <span class="val" id="v-churn">5%</span></label>
+    <input type="range" id="churn" min="0" max="20" value="5">
+  </div>
+  <div class="panel" style="margin-top:16px;">
+    <h2>💰 Revenue Streams</h2>
+    <label>Enterprise/ANSP (Yr5+, K/yr) <span class="val" id="v-ent">500</span></label>
+    <input type="range" id="ent" min="0" max="15000" step="100" value="500">
+    <label>Data feeds (Yr3+, K/yr) <span class="val" id="v-data">200</span></label>
+    <input type="range" id="data" min="0" max="10000" step="50" value="200">
+    <label>Defence/Gov (Yr4+, K/yr) <span class="val" id="v-gov">1000</span></label>
+    <input type="range" id="gov" min="0" max="25000" step="100" value="1000">
+  </div>
+  <div class="panel" style="margin-top:16px;">
+    <h2>📉 Costs</h2>
+    <label>Team (FTEs) <span class="val" id="v-team">5</span></label>
+    <input type="range" id="team" min="1" max="50" value="5">
+    <label>FTE cost (K/yr) <span class="val" id="v-fte">100</span></label>
+    <input type="range" id="fte" min="60" max="250" step="10" value="100">
+    <label>Cloud base (K/yr) <span class="val" id="v-cloud">50</span></label>
+    <input type="range" id="cloud" min="10" max="2000" step="10" value="50">
+  </div>
+  <div class="panel" style="margin-top:16px;">
+    <h2>📌 Scenarios</h2>
+    <div class="scenarios" id="scenario-btns">
+      <button onclick="saveScenario()">💾 Save Current</button>
+    </div>
+    <div class="export-row">
+      <button onclick="exportCSV()">📋 Copy CSV</button>
+      <button onclick="window.print()">🖨️ Print</button>
+    </div>
+  </div>
+</div>
+
+<div>
+  <div class="panel">
+    <h2>📈 Forecast <span id="breakeven-badge"></span></h2>
+    <canvas id="chart"></canvas>
+    <div class="results">
+      <div class="metric"><div class="value" id="r-y10">—</div><div class="label">Year 10 ARR</div></div>
+      <div class="metric"><div class="value" id="r-cum" style="color:#38bdf8">—</div><div class="label">Cum. Revenue</div></div>
+      <div class="metric"><div class="value" id="r-profit">—</div><div class="label">Cum. Profit</div></div>
+      <div class="metric"><div class="value" id="r-be" style="color:#e8b84b">—</div><div class="label">Breakeven</div></div>
+      <div class="metric"><div class="value" id="r-npv" style="color:#a78bfa">—</div><div class="label">NPV (10%)</div></div>
+    </div>
+  </div>
+  <div class="panel" style="margin-top:16px;">
+    <h2>🌪️ Sensitivity (±50% each input → Y10 ARR impact)</h2>
+    <div class="tornado" id="tornado"></div>
+  </div>
+  <div class="panel" style="margin-top:16px; overflow-x:auto;">
+    <h2>📋 Breakdown</h2>
+    <table id="table"><thead><tr><th>Year</th><th>Nodes</th><th>Net Rev</th><th>Other</th><th>Total</th><th>Costs</th><th>Profit</th><th>Cum.</th></tr></thead><tbody></tbody></table>
+  </div>
+</div>
+</div>
+</div>
+
+<script>
+const inputs = ['sites','pen','ramp','arpu','hw','churn','ent','data','gov','team','fte','cloud'];
+let currentCurrency = '€';
+let mcEnabled = false;
+let savedScenarios = [];
+
+
+// Seeded PRNG (mulberry32) for reproducible Monte Carlo
+let mcSeed = 42;
+function mulberry32(a) { return function() { a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+let seededRandom = mulberry32(mcSeed);
+function reseedMC() { mcSeed = Date.now() & 0xFFFFFF; seededRandom = mulberry32(mcSeed); calculate(); }
+
+const regions = {
+  eu: { sites:500000, maxSites:2000000, arpu:50, hw:75, ent:500, data:200, gov:1000, currency:'€' },
+  na: { sites:800000, maxSites:3000000, arpu:65, hw:85, ent:1200, data:500, gov:2500, currency:'$' },
+  apac: { sites:1500000, maxSites:5000000, arpu:40, hw:60, ent:800, data:300, gov:1500, currency:'$' },
+  global: { sites:4000000, maxSites:10000000, arpu:50, hw:70, ent:3500, data:1500, gov:6000, currency:'$' }
+};
+
+const fmt = (n) => {
+  if(Math.abs(n)>=1e6) return (n/1e6).toFixed(2)+'M'+currentCurrency;
+  if(Math.abs(n)>=1e3) return (n/1e3).toFixed(0)+'K'+currentCurrency;
+  return n.toFixed(0)+currentCurrency;
+};
+
+function getParams() {
+  const p = {}; inputs.forEach(id => { p[id] = parseFloat(document.getElementById(id).value); }); return p;
+}
+
+function runModel(p, noise) {
+  const maxSites = p.sites * p.pen / 100;
+  const years = []; let cumRev=0, cumProfit=0;
+  for(let y=1;y<=10;y++){
+    const jitter = noise ? (1 + (seededRandom()-0.5)*0.4) : 1;
+    const t = Math.max(0,(y-p.ramp)/(10-p.ramp));
+    const adoption = t<=0?0: (maxSites*jitter)/(1+Math.exp(-8*(t-0.4)));
+    const activeSites = Math.round(adoption*(1-p.churn/100));
+    const netRev = activeSites*p.arpu*12;
+    const entRev = y>=5?p.ent*1000*Math.min((y-4)/4,1):0;
+    const dataRev = y>=3?p.data*1000*Math.min((y-2)/6,1):0;
+    const govRev = y>=4?p.gov*1000*Math.min((y-3)/5,1):0;
+    const totalRev = netRev+entRev+dataRev+govRev;
+    const teamSize = Math.max(p.team, p.team+Math.floor(activeSites/5000));
+    const teamCost = teamSize*p.fte*1000;
+    const cloudCost = p.cloud*1000+activeSites*2*12;
+    const hwCost = y===1?0:Math.max(0,(adoption-(years[y-2]?.raw||0)))*p.hw;
+    const totalCost = teamCost+cloudCost+hwCost;
+    const profit = totalRev-totalCost;
+    cumRev+=totalRev; cumProfit+=profit;
+    years.push({y,sites:activeSites,raw:adoption,netRev,otherRev:entRev+dataRev+govRev,totalRev,totalCost,profit,cumProfit});
+  }
+  return years;
+}
+
+function calculate() {
+  const p = getParams();
+  document.getElementById('v-sites').textContent = p.sites>=1e6?(p.sites/1e6).toFixed(1)+'M':(p.sites/1000).toFixed(0)+'K';
+  document.getElementById('v-pen').textContent = p.pen+'%';
+  document.getElementById('v-ramp').textContent = p.ramp;
+  document.getElementById('v-arpu').textContent = p.arpu+currentCurrency;
+  document.getElementById('v-hw').textContent = p.hw+currentCurrency;
+  document.getElementById('v-churn').textContent = p.churn+'%';
+  document.getElementById('v-ent').textContent = p.ent+'K';
+  document.getElementById('v-data').textContent = p.data+'K';
+  document.getElementById('v-gov').textContent = p.gov+'K';
+  document.getElementById('v-team').textContent = p.team;
+  document.getElementById('v-fte').textContent = p.fte+'K';
+  document.getElementById('v-cloud').textContent = p.cloud+'K';
+
+  const years = runModel(p, false);
+  const last = years[9];
+  let cumRev = years.reduce((s,r)=>s+r.totalRev,0);
+  document.getElementById('r-y10').textContent = fmt(last.totalRev);
+  document.getElementById('r-cum').textContent = fmt(cumRev);
+  document.getElementById('r-profit').textContent = fmt(last.cumProfit);
+  document.getElementById('r-profit').style.color = last.cumProfit>=0?'#34d399':'#f87171';
+
+  // Breakeven
+  const beYear = years.find(r=>r.cumProfit>=0);
+  document.getElementById('r-be').textContent = beYear ? 'Year '+beYear.y : '>10';
+  
+  // NPV at 10% discount rate
+  const discountRate = 0.10;
+  let npv = 0;
+  years.forEach(r => { npv += r.profit / Math.pow(1 + discountRate, r.y); });
+  document.getElementById('r-npv').textContent = fmt(npv);
+  document.getElementById('r-npv').style.color = npv >= 0 ? '#a78bfa' : '#f87171';
+
+  document.getElementById('breakeven-badge').innerHTML = beYear ? '<span class="breakeven-badge">BE: Y'+beYear.y+' | NPV@10%: '+fmt(npv)+'</span>' : '<span class="breakeven-badge" style="border-color:#f87171;color:#f87171">No breakeven in 10yr</span>';
+
+  // Table
+  document.querySelector('#table tbody').innerHTML = years.map(r=>`<tr><td>Y${r.y}</td><td>${r.sites.toLocaleString()}</td><td>${fmt(r.netRev)}</td><td>${fmt(r.otherRev)}</td><td class="highlight">${fmt(r.totalRev)}</td><td style="color:#f87171">${fmt(r.totalCost)}</td><td style="color:${r.profit>=0?'#34d399':'#f87171'}">${fmt(r.profit)}</td><td>${fmt(r.cumProfit)}</td></tr>`).join('');
+
+  // Monte Carlo
+  let mcBands = null;
+  if(mcEnabled) {
+    const runs = [];
+    for(let i=0;i<200;i++) runs.push(runModel(p,true));
+    mcBands = [];
+    for(let y=0;y<10;y++){
+      const vals = runs.map(r=>r[y].totalRev).sort((a,b)=>a-b);
+      mcBands.push({p10:vals[20],p50:vals[100],p90:vals[180]});
+    }
+  }
+
+  drawChart(years, mcBands);
+  drawTornado(p);
+}
+
+function drawTornado(baseP) {
+  const baseY10 = runModel(baseP,false)[9].totalRev;
+  const sensitivities = [];
+  const testInputs = ["sites","pen","arpu","ent","gov","data","team","fte","churn","hw","cloud"];
+  const labels = {sites:"Sites",pen:"Penetration",arpu:"ARPU",ent:"Enterprise",gov:"Defence",data:"Data",team:"Team Size",fte:"FTE Cost",churn:"Churn",hw:"HW Cost",cloud:"Cloud"};
+  const costInputs = new Set(["team","fte","cloud","hw","churn"]);
+  
+  testInputs.forEach(id=>{
+    const pHigh={...baseP}; pHigh[id]=baseP[id]*1.5;
+    const pLow={...baseP}; pLow[id]=baseP[id]*0.5;
+    const highY10 = runModel(pHigh,false)[9].totalRev;
+    const lowY10 = runModel(pLow,false)[9].totalRev;
+    const deltaHigh = highY10 - baseY10;
+    const deltaLow = lowY10 - baseY10;
+    sensitivities.push({id, label:labels[id]||id, deltaHigh, deltaLow, span:Math.abs(deltaHigh-deltaLow), isCost:costInputs.has(id)});
+  });
+  sensitivities.sort((a,b)=>b.span-a.span);
+  const maxDelta = Math.max(...sensitivities.map(s=>Math.max(Math.abs(s.deltaHigh),Math.abs(s.deltaLow))),1);
+  
+  document.getElementById("tornado").innerHTML = sensitivities.map(s=>{
+    const pctHigh = (s.deltaHigh/maxDelta*50).toFixed(1);
+    const pctLow = (s.deltaLow/maxDelta*50).toFixed(1);
+    const highColor = s.deltaHigh>=0 ? "#34d399" : "#f87171";
+    const lowColor = s.deltaLow>=0 ? "#34d399" : "#f87171";
+    return `<div class="tornado-bar"><span class="tornado-label">${s.label}</span><div style="display:flex;align-items:center;flex:1;position:relative;height:18px;"><div style="position:absolute;left:50%;top:0;bottom:0;width:1px;background:#475569;"></div><div style="position:absolute;${s.deltaLow<0?"right:50%;width:"+Math.abs(pctLow)+"%":"left:50%;width:"+pctLow+"%"};height:14px;top:2px;background:${lowColor};border-radius:2px;opacity:0.6;" title="-50%: ${fmt(s.deltaLow)}"></div><div style="position:absolute;${s.deltaHigh<0?"right:50%;width:"+Math.abs(pctHigh)+"%":"left:50%;width:"+pctHigh+"%"};height:14px;top:2px;background:${highColor};border-radius:2px;opacity:0.9;" title="+50%: ${fmt(s.deltaHigh)}"></div></div><span class="tornado-val" style="width:70px;text-align:right;">${fmt(s.span)}</span></div>`;
+  }).join("");
+}
+
+function drawChart(years, mcBands) {
+  const canvas=document.getElementById('chart'),ctx=canvas.getContext('2d');
+  const dpr=window.devicePixelRatio||1,rect=canvas.getBoundingClientRect();
+  canvas.width=rect.width*dpr;canvas.height=rect.height*dpr;ctx.scale(dpr,dpr);
+  const W=rect.width,H=rect.height;ctx.clearRect(0,0,W,H);
+  const pad={t:35,r:20,b:30,l:75},cW=W-pad.l-pad.r,cH=H-pad.t-pad.b;
+  let maxVal=Math.max(...years.map(r=>r.totalRev),...years.map(r=>Math.abs(r.cumProfit)),1);
+  if(mcBands) maxVal=Math.max(maxVal,...mcBands.map(b=>b.p90));
+
+  ctx.strokeStyle='#1e293b';ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){const y=pad.t+(cH/4)*i;ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(W-pad.r,y);ctx.stroke();ctx.fillStyle='#6b7280';ctx.font='9px monospace';ctx.textAlign='right';ctx.fillText(fmt(maxVal*(1-i/4)),pad.l-8,y+3);}
+  ctx.textAlign='center';years.forEach((r,i)=>{ctx.fillStyle='#6b7280';ctx.font='9px monospace';ctx.fillText('Y'+r.y,pad.l+(i+0.5)*(cW/10),H-10);});
+
+  // MC bands
+  if(mcBands){
+    ctx.fillStyle='rgba(56,189,248,0.08)';ctx.beginPath();
+    mcBands.forEach((b,i)=>{const x=pad.l+(i+0.5)*(cW/10);const y=pad.t+cH-(b.p90/maxVal)*cH;i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
+    for(let i=9;i>=0;i--){const x=pad.l+(i+0.5)*(cW/10);const y=pad.t+cH-(mcBands[i].p10/maxVal)*cH;ctx.lineTo(x,y);}
+    ctx.closePath();ctx.fill();
+  }
+
+  // Bars
+  years.forEach((r,i)=>{const x=pad.l+i*(cW/10)+5,bw=(cW/10)-10,h=(r.totalRev/maxVal)*cH;ctx.fillStyle='#1e3a8a';ctx.fillRect(x,pad.t+cH-h,bw,h);const oh=(r.otherRev/maxVal)*cH;ctx.fillStyle='#38bdf8';ctx.fillRect(x,pad.t+cH-h,bw,oh);});
+
+  // Profit line
+  ctx.strokeStyle='#34d399';ctx.lineWidth=2.5;ctx.beginPath();
+  years.forEach((r,i)=>{const x=pad.l+(i+0.5)*(cW/10),y=pad.t+cH-(Math.max(0,r.cumProfit)/maxVal)*cH;i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});ctx.stroke();
+
+  // Zero line
+  const zeroY=pad.t+cH;ctx.strokeStyle='#475569';ctx.lineWidth=0.5;ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(pad.l,zeroY);ctx.lineTo(W-pad.r,zeroY);ctx.stroke();ctx.setLineDash([]);
+
+  // Breakeven marker
+  const beIdx=years.findIndex(r=>r.cumProfit>=0);
+  if(beIdx>=0){const x=pad.l+(beIdx+0.5)*(cW/10);ctx.strokeStyle='#34d399';ctx.lineWidth=1;ctx.setLineDash([2,2]);ctx.beginPath();ctx.moveTo(x,pad.t);ctx.lineTo(x,pad.t+cH);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='#34d399';ctx.font='bold 10px monospace';ctx.textAlign='center';ctx.fillText('BE',x,pad.t-5);}
+
+  // Legend
+  ctx.fillStyle='#1e3a8a';ctx.fillRect(pad.l+8,8,10,10);ctx.fillStyle='#9ca3af';ctx.font='9px monospace';ctx.textAlign='left';ctx.fillText('Revenue',pad.l+22,17);
+  ctx.fillStyle='#38bdf8';ctx.fillRect(pad.l+80,8,10,10);ctx.fillStyle='#9ca3af';ctx.fillText('Other',pad.l+94,17);
+  ctx.strokeStyle='#34d399';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(pad.l+140,13);ctx.lineTo(pad.l+155,13);ctx.stroke();ctx.fillStyle='#9ca3af';ctx.fillText('Cum.Profit',pad.l+160,17);
+  if(mcBands){ctx.fillStyle='rgba(56,189,248,0.3)';ctx.fillRect(pad.l+240,8,10,10);ctx.fillStyle='#9ca3af';ctx.fillText('MC p10-p90',pad.l+254,17);}
+}
+
+function toggleMC(){mcEnabled=!mcEnabled;seededRandom=mulberry32(mcSeed);document.getElementById('mc-toggle').textContent=mcEnabled?'ON':'OFF';document.getElementById('mc-toggle').classList.toggle('active',mcEnabled);document.getElementById('mc-reseed').style.display=mcEnabled?'inline-block':'none';calculate();}
+
+function updateRegionPresets(){const c=regions[document.getElementById('region').value];currentCurrency=c.currency;document.querySelectorAll('.cur').forEach(e=>e.textContent=c.currency);document.getElementById('sites').max=c.maxSites;document.getElementById('sites').value=c.sites;document.getElementById('arpu').value=c.arpu;document.getElementById('hw').value=c.hw;document.getElementById('ent').value=c.ent;document.getElementById('data').value=c.data;document.getElementById('gov').value=c.gov;calculate();}
+
+function saveScenario(){
+  const p=getParams();const name=prompt('Scenario name:','Scenario '+(savedScenarios.length+1));if(!name)return;
+  savedScenarios.push({name,params:p,currency:currentCurrency});
+  const btn=document.createElement('button');btn.className='saved';btn.textContent='📊 '+name;btn.onclick=()=>{inputs.forEach(id=>document.getElementById(id).value=p[id]);currentCurrency=savedScenarios.find(s=>s.name===name).currency;calculate();};
+  document.getElementById('scenario-btns').appendChild(btn);
+}
+
+function exportCSV(){
+  const p=getParams();const years=runModel(p,false);
+  let csv='Year,Nodes,NetRev,OtherRev,TotalRev,Costs,Profit,Cumulative\n';
+  years.forEach(r=>{csv+=`${r.y},${r.sites},${r.netRev.toFixed(0)},${r.otherRev.toFixed(0)},${r.totalRev.toFixed(0)},${r.totalCost.toFixed(0)},${r.profit.toFixed(0)},${r.cumProfit.toFixed(0)}\n`;});
+  navigator.clipboard.writeText(csv).then(()=>alert('CSV copied to clipboard'));
+}
+
+inputs.forEach(id=>document.getElementById(id).addEventListener('input',calculate));
+document.getElementById('region').addEventListener('change',updateRegionPresets);
+calculate();window.addEventListener('resize',calculate);
+</script>
+</body>
+</html>

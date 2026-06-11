@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Securing Skies — 3D GNSS Integrity</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<style>
+html, body { margin: 0; height: 100%; background: #020617; overflow: hidden; }
+#hud {
+  position: fixed; top: 10px; left: 10px; color: #0f0; font: 12px monospace;
+  z-index: 9999; background: rgba(0,0,0,0.85); padding: 10px 14px; border-radius: 6px;
+  border: 1px solid rgba(0,200,120,0.3); pointer-events: none; max-width: 320px;
+}
+#hud .warn { color: #e8b84b; }
+#hud .alert { color: #f85149; }
+#hud .ok { color: #00c878; }
+#alert-bar {
+  display: none; position: fixed; top: 0; left: 0; right: 0; z-index: 10000;
+  padding: 6px 16px; font: bold 12px monospace; text-align: center;
+  letter-spacing: 1px; pointer-events: none;
+}
+#alert-bar.red { display: block; background: rgba(180,20,20,0.92); color: #f85149; border-bottom: 2px solid #f85149; }
+#alert-bar.orange { display: block; background: rgba(180,80,0,0.92); color: #ff9933; border-bottom: 2px solid #ff9933; }
+#alert-bar.yellow { display: block; background: rgba(125,100,0,0.92); color: #e8b84b; border-bottom: 2px solid #e8b84b; }
+</style>
+</head>
+<body>
+<div id="hud">Connecting to GNSS feed...</div>
+<div id="alert-bar"></div>
+
+<a-scene background="color: #020617" renderer="antialias: true" fog="type: exponential; color: #020617; density: 0.008">
+  <a-entity id="rig" position="0 18 25">
+    <a-camera camera="fov: 70" look-controls wasd-controls="acceleration: 30; fly: true"></a-camera>
+  </a-entity>
+
+  <!-- Ground -->
+  <a-plane position="0 -0.1 0" rotation="-90 0 0" width="80" height="80" color="#061126" opacity="0.9"></a-plane>
+  <a-ring position="0 0 0" rotation="-90 0 0" radius-inner="19.8" radius-outer="20" color="#1f2937" segments-theta="64"></a-ring>
+  <a-ring position="0 0 0" rotation="-90 0 0" radius-inner="39.8" radius-outer="40" color="#111827" segments-theta="64"></a-ring>
+
+  <!-- Sensor platforms -->
+  <!-- North -->
+  <a-entity id="platform-north" position="-5 0 -12">
+    <a-cylinder radius="0.08" height="5" position="0 2.5 0" color="#0072B2" emissive="#0072B2" emissive-intensity="0.3"></a-cylinder>
+    <a-sphere id="north-beacon" radius="0.15" position="0 5.1 0" color="#00c878" emissive="#00c878" emissive-intensity="0.8"></a-sphere>
+    <a-torus id="north-eph" position="0 0.05 0" rotation="-90 0 0" radius="1" radius-tubular="0.02" color="#0072B2" opacity="0.4" segments-radial="32"></a-torus>
+    <a-text value="NORTH" position="0 6 0" align="center" color="#0072B2" scale="1.5 1.5 1.5"></a-text>
+    <a-text id="north-label" value="..." position="0 5.5 0" align="center" color="#7ab090" scale="0.8 0.8 0.8"></a-text>
+    <a-entity id="north-dots"></a-entity>
+  </a-entity>
+
+  <!-- East -->
+  <a-entity id="platform-east" position="12 0 -6">
+    <a-cylinder radius="0.08" height="5" position="0 2.5 0" color="#CC0000" emissive="#CC0000" emissive-intensity="0.3"></a-cylinder>
+    <a-sphere id="east-beacon" radius="0.15" position="0 5.1 0" color="#00c878" emissive="#00c878" emissive-intensity="0.8"></a-sphere>
+    <a-torus id="east-eph" position="0 0.05 0" rotation="-90 0 0" radius="1" radius-tubular="0.02" color="#CC0000" opacity="0.4" segments-radial="32"></a-torus>
+    <a-text value="EAST" position="0 6 0" align="center" color="#CC0000" scale="1.5 1.5 1.5"></a-text>
+    <a-text id="east-label" value="..." position="0 5.5 0" align="center" color="#7ab090" scale="0.8 0.8 0.8"></a-text>
+    <a-entity id="east-dots"></a-entity>
+  </a-entity>
+
+  <!-- West -->
+  <a-entity id="platform-west" position="-8 0 8">
+    <a-cylinder radius="0.08" height="5" position="0 2.5 0" color="#009E73" emissive="#009E73" emissive-intensity="0.3"></a-cylinder>
+    <a-sphere id="west-beacon" radius="0.15" position="0 5.1 0" color="#00c878" emissive="#00c878" emissive-intensity="0.8"></a-sphere>
+    <a-torus id="west-eph" position="0 0.05 0" rotation="-90 0 0" radius="1" radius-tubular="0.02" color="#009E73" opacity="0.4" segments-radial="32"></a-torus>
+    <a-text value="WEST" position="0 6 0" align="center" color="#009E73" scale="1.5 1.5 1.5"></a-text>
+    <a-text id="west-label" value="..." position="0 5.5 0" align="center" color="#7ab090" scale="0.8 0.8 0.8"></a-text>
+    <a-entity id="west-dots"></a-entity>
+  </a-entity>
+
+  <!-- Starfield -->
+  <a-entity id="starfield"></a-entity>
+
+  <!-- Lighting -->
+  <a-light type="ambient" color="#5b7fa8" intensity="0.4"></a-light>
+  <a-light type="directional" position="-0.5 1 0.3" intensity="0.5" color="#fff"></a-light>
+</a-scene>
+
+<script>
+(function() {
+  const SENSORS = {
+    'sensor-north': { color: '#0072B2', lat: 60.319555, lon: 24.830816, platform: 'platform-north', prefix: 'north' },
+    'sensor-east':  { color: '#CC0000', lat: 60.374053, lon: 25.249058, platform: 'platform-east', prefix: 'east' },
+    'sensor-west':  { color: '#009E73', lat: 60.130850, lon: 24.512939, platform: 'platform-west', prefix: 'west' },
+  };
+  const BUF_SIZE = 100;
+  const SCALE = 0.5; // 1 meter = 0.5 A-Frame units
+  const state = {};
+  for (const s of Object.keys(SENSORS)) state[s] = { buf: [], health: null };
+
+  // Starfield
+  const sf = document.getElementById('starfield');
+  for (let i = 0; i < 200; i++) {
+    const star = document.createElement('a-sphere');
+    star.setAttribute('radius', 0.03 + Math.random() * 0.05);
+    star.setAttribute('color', '#fff');
+    star.setAttribute('emissive', '#fff');
+    star.setAttribute('emissive-intensity', 0.5 + Math.random());
+    star.setAttribute('position', `${(Math.random()-0.5)*120} ${20+Math.random()*60} ${(Math.random()-0.5)*120}`);
+    sf.appendChild(star);
+  }
+
+  function offsetM(lat, lon, tLat, tLon) {
+    const R = 6371000;
+    const dy = (lat - tLat) * Math.PI / 180 * R;
+    const dx = (lon - tLon) * Math.PI / 180 * Math.cos(tLat * Math.PI / 180) * R;
+    return { x: dx, y: dy };
+  }
+
+  // MQTT
+  const client = mqtt.connect('wss://mqtt.securingskies.eu:8443', {
+    username: 'team9', password: 'ResearchView2026!', rejectUnauthorized: false
+  });
+  client.on('connect', () => {
+    document.getElementById('hud').innerHTML = '<span class="ok">● LIVE</span> — GNSS Integrity 3D';
+    client.subscribe('+/gnss');
+    client.subscribe('sensor-core/gnss-health');
+  });
+  client.on('offline', () => {
+    document.getElementById('hud').innerHTML = '<span class="alert">● DISCONNECTED</span>';
+  });
+  client.on('message', (topic, msg) => {
+    try {
+      const parts = topic.split('/');
+      const payload = JSON.parse(msg.toString());
+      if (parts[1] === 'gnss' && state[parts[0]]) {
+        const sensor = parts[0];
+        const cfg = SENSORS[sensor];
+        payload._offset = offsetM(payload.lat, payload.lon, cfg.lat, cfg.lon);
+        payload._dev = Math.sqrt(payload._offset.x**2 + payload._offset.y**2);
+        state[sensor].buf.push(payload);
+        if (state[sensor].buf.length > BUF_SIZE) state[sensor].buf.shift();
+      } else if (topic === 'sensor-core/gnss-health') {
+        for (const [s, d] of Object.entries(payload.sensors || {})) {
+          if (state[s]) state[s].health = d;
+        }
+        updateAlerts(payload);
+      }
+    } catch(e) {}
+  });
+
+  function updateAlerts(health) {
+    const bar = document.getElementById('alert-bar');
+    let worst = null, reasons = [];
+    for (const [s, d] of Object.entries(health.sensors || {})) {
+      for (const a of (d.alerts || [])) {
+        if (!worst || sRank(a.severity) > sRank(worst)) worst = a.severity;
+        reasons.push(s.replace('sensor-','').toUpperCase() + ': ' + a.reason);
+      }
+    }
+    if (worst) { bar.className = worst; bar.textContent = '⚠ ' + reasons.join(' | '); }
+    else { bar.style.display = 'none'; bar.className = ''; }
+  }
+  function sRank(s) { return s === 'red' ? 3 : s === 'orange' ? 2 : 1; }
+
+  // 3D update loop
+  const dotPools = {};
+  for (const [sensor, cfg] of Object.entries(SENSORS)) {
+    dotPools[sensor] = [];
+    const container = document.getElementById(cfg.prefix + '-dots');
+    for (let i = 0; i < BUF_SIZE; i++) {
+      const dot = document.createElement('a-sphere');
+      dot.setAttribute('radius', 0.06);
+      dot.setAttribute('color', cfg.color);
+      dot.setAttribute('emissive', cfg.color);
+      dot.setAttribute('emissive-intensity', 0.5);
+      dot.setAttribute('opacity', 0);
+      dot.setAttribute('position', '0 0.1 0');
+      container.appendChild(dot);
+      dotPools[sensor].push(dot);
+    }
+  }
+
+  setInterval(() => {
+    for (const [sensor, cfg] of Object.entries(SENSORS)) {
+      const buf = state[sensor].buf;
+      const health = state[sensor].health;
+      const n = buf.length;
+
+      // Update dots
+      const dots = dotPools[sensor];
+      for (let i = 0; i < BUF_SIZE; i++) {
+        if (i < n) {
+          const p = buf[i];
+          const age = (n - 1 - i) / Math.max(n, 1);
+          const x = p._offset.x * SCALE;
+          const z = -p._offset.y * SCALE;
+          dots[i].setAttribute('position', `${x} 0.1 ${z}`);
+          dots[i].setAttribute('opacity', 0.15 + 0.85 * (1 - age));
+          dots[i].setAttribute('radius', i === n - 1 ? 0.12 : 0.06);
+        } else {
+          dots[i].setAttribute('opacity', 0);
+        }
+      }
+
+      // EPH ring
+      const ephEl = document.getElementById(cfg.prefix + '-eph');
+      if (n > 0) {
+        const eph = buf[n-1].eph_m || 1;
+        ephEl.setAttribute('radius', Math.max(0.3, eph * SCALE));
+      }
+
+      // Beacon color based on status
+      const beacon = document.getElementById(cfg.prefix + '-beacon');
+      if (health) {
+        const st = health.status;
+        if (st === 'alert') { beacon.setAttribute('color', '#f85149'); beacon.setAttribute('emissive', '#f85149'); }
+        else if (st === 'warning') { beacon.setAttribute('color', '#ff9933'); beacon.setAttribute('emissive', '#ff9933'); }
+        else if (st === 'degraded') { beacon.setAttribute('color', '#e8b84b'); beacon.setAttribute('emissive', '#e8b84b'); }
+        else { beacon.setAttribute('color', '#00c878'); beacon.setAttribute('emissive', '#00c878'); }
+      }
+
+      // Label
+      const label = document.getElementById(cfg.prefix + '-label');
+      if (n > 0) {
+        const latest = buf[n-1];
+        label.setAttribute('value',
+          `eph:${(latest.eph_m||0).toFixed(1)}m  dev:${(latest._dev||0).toFixed(1)}m`);
+      }
+    }
+
+    // HUD update
+    const hud = document.getElementById('hud');
+    let hudText = '<span class="ok">● LIVE</span> — GNSS Integrity 3D<br>';
+    for (const [sensor, cfg] of Object.entries(SENSORS)) {
+      const buf = state[sensor].buf;
+      const h = state[sensor].health;
+      const name = sensor.replace('sensor-', '').toUpperCase();
+      if (buf.length > 0) {
+        const l = buf[buf.length-1];
+        const statusColor = h ? (h.status === 'ok' ? 'ok' : h.status === 'alert' ? 'alert' : 'warn') : 'ok';
+        hudText += `<span class="${statusColor}">${name}</span> eph:${(l.eph_m||0).toFixed(1)} dev:${(l._dev||0).toFixed(1)}m<br>`;
+      } else {
+        hudText += `${name}: waiting...<br>`;
+      }
+    }
+    hud.innerHTML = hudText;
+  }, 500);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SECURESKIES ⬡ GNSS INTEGRITY MONITOR</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #060a0f; color: #a8bcc8; font-family: 'Courier New', monospace; overflow-x: hidden; }
+
+#alert-banner {
+  display: none; position: fixed; top: 0; left: 0; right: 0; z-index: 1900;
+  padding: 8px 16px; font-size: 0.85em; font-weight: bold; text-align: center;
+  letter-spacing: 1px; pointer-events: none; border-bottom: 2px solid;
+}
+#alert-banner.yellow { display: block; background: rgba(125,100,0,0.92); color: #e8b84b; border-color: #e8b84b; }
+#alert-banner.orange { display: block; background: rgba(180,80,0,0.92); color: #ff9933; border-color: #ff9933; }
+#alert-banner.red    { display: block; background: rgba(180,20,20,0.92); color: #f85149; border-color: #f85149; }
+
+header {
+  padding: 12px 20px; border-bottom: 1px solid rgba(0,200,120,0.2);
+  display: flex; justify-content: space-between; align-items: center;
+}
+header h1 { font-size: 1.1em; color: #00c878; letter-spacing: 2px; }
+#conn-status { font-size: 0.75em; padding: 3px 10px; border-radius: 2px; border: 1px solid; }
+#conn-status.live { color: #00c878; border-color: rgba(0,200,80,0.5); }
+#conn-status.disconnected { color: #f85149; border-color: rgba(248,81,73,0.5); }
+
+.grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; padding: 12px; min-height: calc(100vh - 60px); }
+@media (max-width: 1000px) { .grid { grid-template-columns: 1fr; } }
+
+.sensor-col { display: flex; flex-direction: column; gap: 10px; }
+.panel {
+  background: #08111a; border: 1px solid rgba(0,200,120,0.18); border-radius: 3px;
+  padding: 10px; position: relative; overflow: hidden;
+}
+.panel::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, var(--sensor-color, #00c878) 0%, transparent 80%);
+}
+
+.sensor-header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.sensor-header .name { font-size: 1em; font-weight: bold; color: var(--sensor-color); letter-spacing: 1px; }
+.fix-dot { width: 10px; height: 10px; border-radius: 50%; }
+.fix-dot.fix3d { background: #00c878; box-shadow: 0 0 6px #00c878; }
+.fix-dot.fix2d { background: #e8b84b; box-shadow: 0 0 6px #e8b84b; }
+.fix-dot.nofix { background: #f85149; box-shadow: 0 0 6px #f85149; }
+
+.metrics { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; font-size: 0.75em; margin-bottom: 6px; }
+.metric .k { color: #4a7a6a; text-transform: uppercase; font-size: 0.85em; }
+.metric .v { color: #bee8d0; font-weight: bold; }
+
+canvas { width: 100%; background: #04080d; border: 1px solid rgba(0,200,120,0.1); border-radius: 2px; }
+.scatter-canvas { height: 200px; }
+.ts-canvas { height: 150px; }
+
+.status-box { font-size: 0.75em; padding: 6px; background: #04080d; border-radius: 2px; border: 1px solid rgba(0,200,120,0.1); }
+.status-box .alert-text { color: #e8b84b; }
+.status-box .alert-text.red { color: #f85149; }
+
+.legend {
+  position: fixed; bottom: 10px; left: 10px; font-size: 0.7em; background: rgba(8,17,26,0.95);
+  border: 1px solid rgba(0,200,120,0.15); padding: 8px 12px; border-radius: 3px; z-index: 100;
+}
+.legend-item { display: flex; align-items: center; gap: 6px; margin: 3px 0; }
+.legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+</style>
+</head>
+<body>
+<div id="alert-banner"></div>
+<header>
+  <h1>⬡ GNSS INTEGRITY MONITOR</h1>
+  <span id="conn-status" class="disconnected">● CONNECTING</span>
+</header>
+
+<div class="grid">
+  <div class="sensor-col" style="--sensor-color: #0072B2" id="col-sensor-north"></div>
+  <div class="sensor-col" style="--sensor-color: #CC0000" id="col-sensor-east"></div>
+  <div class="sensor-col" style="--sensor-color: #009E73" id="col-sensor-west"></div>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#00c878"></div> Healthy / Recent</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#e8b84b"></div> Degraded / Warning</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#f85149"></div> Alert / Spoofing</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#334155"></div> Older samples</div>
+</div>
+
+<script>
+const SENSORS = {
+  'sensor-north': { color: '#0072B2', lat: 60.319555, lon: 24.830816 },
+  'sensor-east':  { color: '#CC0000', lat: 60.374053, lon: 25.249058 },
+  'sensor-west':  { color: '#009E73', lat: 60.130850, lon: 24.512939 },
+};
+const MQTT_URL = 'wss://mqtt.securingskies.eu:8443';
+const BUF_SIZE = 300;
+
+// Per-sensor state
+const state = {};
+for (const s of Object.keys(SENSORS)) {
+  state[s] = { buf: [], health: null };
+}
+
+// Build DOM for each sensor
+for (const [sensor, cfg] of Object.entries(SENSORS)) {
+  const col = document.getElementById('col-' + sensor);
+  const label = sensor.replace('sensor-', '').toUpperCase();
+  col.innerHTML = `
+    <div class="panel">
+      <div class="sensor-header">
+        <div class="fix-dot nofix" id="${sensor}-fix"></div>
+        <span class="name">${label}</span>
+      </div>
+      <div class="metrics">
+        <div class="metric"><div class="k">EPH</div><div class="v" id="${sensor}-eph">&mdash;</div></div>
+        <div class="metric"><div class="k">EPV</div><div class="v" id="${sensor}-epv">&mdash;</div></div>
+        <div class="metric"><div class="k">Dev</div><div class="v" id="${sensor}-dev">&mdash;</div></div>
+        <div class="metric"><div class="k">Speed</div><div class="v" id="${sensor}-spd">&mdash;</div></div>
+        <div class="metric"><div class="k">Std</div><div class="v" id="${sensor}-std">&mdash;</div></div>
+        <div class="metric"><div class="k">Sats</div><div class="v" id="${sensor}-sats">&mdash;</div></div>
+      </div>
+    </div>
+    <div class="panel"><canvas class="scatter-canvas" id="${sensor}-scatter"></canvas></div>
+    <div class="panel"><canvas class="ts-canvas" id="${sensor}-ts"></canvas></div>
+    <div class="panel status-box" id="${sensor}-status">Waiting for data...</div>
+  `;
+}
+
+// Utility: meters between two points (equirectangular approx at 60°N)
+function deviationM(lat, lon, tLat, tLon) {
+  const R = 6371000;
+  const dLat = (lat - tLat) * Math.PI / 180;
+  const dLon = (lon - tLon) * Math.PI / 180 * Math.cos(tLat * Math.PI / 180);
+  return Math.sqrt(dLat * dLat + dLon * dLon) * R;
+}
+function offsetM(lat, lon, tLat, tLon) {
+  const R = 6371000;
+  const dy = (lat - tLat) * Math.PI / 180 * R;
+  const dx = (lon - tLon) * Math.PI / 180 * Math.cos(tLat * Math.PI / 180) * R;
+  return { x: dx, y: dy };
+}
+
+// MQTT
+const client = mqtt.connect(MQTT_URL, { username: 'team9', password: 'ResearchView2026!', rejectUnauthorized: false });
+client.on('connect', () => {
+  document.getElementById('conn-status').className = 'live';
+  document.getElementById('conn-status').textContent = '● LIVE';
+  client.subscribe('+/gnss');
+  client.subscribe('sensor-core/gnss-health');
+});
+client.on('offline', () => {
+  document.getElementById('conn-status').className = 'disconnected';
+  document.getElementById('conn-status').textContent = '● DISCONNECTED';
+});
+client.on('message', (topic, msg) => {
+  try {
+    const parts = topic.split('/');
+    const payload = JSON.parse(msg.toString());
+    if (parts[1] === 'gnss' && state[parts[0]]) {
+      const sensor = parts[0];
+      const cfg = SENSORS[sensor];
+      payload._dev = deviationM(payload.lat, payload.lon, cfg.lat, cfg.lon);
+      payload._offset = offsetM(payload.lat, payload.lon, cfg.lat, cfg.lon);
+      state[sensor].buf.push(payload);
+      if (state[sensor].buf.length > BUF_SIZE) state[sensor].buf.shift();
+    } else if (topic === 'sensor-core/gnss-health') {
+      for (const [s, d] of Object.entries(payload.sensors || {})) {
+        if (state[s]) state[s].health = d;
+      }
+      updateAlertBanner(payload);
+    }
+  } catch(e) {}
+});
+
+function updateAlertBanner(health) {
+  const banner = document.getElementById('alert-banner');
+  let worst = null;
+  let reasons = [];
+  for (const [s, d] of Object.entries(health.sensors || {})) {
+    for (const a of (d.alerts || [])) {
+      if (!worst || severityRank(a.severity) > severityRank(worst)) worst = a.severity;
+      reasons.push(s.replace('sensor-','').toUpperCase() + ': ' + a.reason);
+    }
+  }
+  if (worst) {
+    banner.className = worst;
+    banner.textContent = '⚠ ' + reasons.join(' | ');
+    banner.style.display = 'block';
+  } else {
+    banner.style.display = 'none';
+  }
+}
+function severityRank(s) { return s === 'red' ? 3 : s === 'orange' ? 2 : 1; }
+
+// Rendering
+function renderScatter(sensor) {
+  const canvas = document.getElementById(sensor + '-scatter');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+  const W = rect.width, H = rect.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const buf = state[sensor].buf;
+  if (!buf.length) return;
+
+  // Auto-scale: find max deviation, min 10m
+  let maxDev = 10;
+  for (const p of buf) { if (p._dev > maxDev) maxDev = p._dev; }
+  maxDev = Math.ceil(maxDev * 1.2);
+  const scale = Math.min(W, H) / 2 / maxDev;
+  const cx = W / 2, cy = H / 2;
+
+  // Grid
+  ctx.strokeStyle = 'rgba(0,200,120,0.1)';
+  ctx.lineWidth = 0.5;
+  for (let r = maxDev / 4; r <= maxDev; r += maxDev / 4) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, r * scale, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  // Crosshair
+  ctx.strokeStyle = 'rgba(0,200,120,0.3)';
+  ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, H); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(W, cy); ctx.stroke();
+
+  // Scale label
+  ctx.fillStyle = '#4a7a6a';
+  ctx.font = '10px monospace';
+  ctx.fillText(maxDev + 'm', cx + maxDev * scale - 20, cy - 4);
+
+  // EPH circle (latest)
+  const latest = buf[buf.length - 1];
+  if (latest.eph_m) {
+    ctx.strokeStyle = 'rgba(232,184,75,0.4)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.arc(cx, cy, latest.eph_m * scale, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Points
+  const n = buf.length;
+  for (let i = 0; i < n; i++) {
+    const p = buf[i];
+    if (!p._offset) continue;
+    const age = (n - 1 - i) / n;
+    const x = cx + p._offset.x * scale;
+    const y = cy - p._offset.y * scale;
+    const alpha = 0.2 + 0.8 * (1 - age);
+    const color = SENSORS[sensor].color;
+    ctx.fillStyle = color;
+    ctx.globalAlpha = alpha;
+    ctx.beginPath();
+    ctx.arc(x, y, i === n - 1 ? 4 : 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function renderTimeSeries(sensor) {
+  const canvas = document.getElementById(sensor + '-ts');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+  const W = rect.width, H = rect.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const buf = state[sensor].buf;
+  if (buf.length < 2) return;
+
+  const rows = [
+    { label: 'Dev(m)', data: buf.map(p => p._dev || 0), color: SENSORS[sensor].color, threshold: 50 },
+    { label: 'EPH(m)', data: buf.map(p => p.eph_m || 0), color: '#e8b84b', threshold: null },
+    { label: 'Spd(m/s)', data: buf.map(p => p.speed_mps || 0), color: '#38bdf8', threshold: 2 },
+  ];
+  const rowH = H / rows.length;
+
+  for (let r = 0; r < rows.length; r++) {
+    const row = rows[r];
+    const yOff = r * rowH;
+    const data = row.data;
+    let maxVal = Math.max(...data, 1);
+    if (row.threshold && row.threshold > maxVal) maxVal = row.threshold * 1.2;
+
+    // Label
+    ctx.fillStyle = '#4a7a6a';
+    ctx.font = '9px monospace';
+    ctx.fillText(row.label, 4, yOff + 10);
+
+    // Threshold line
+    if (row.threshold) {
+      const ty = yOff + rowH - (row.threshold / maxVal) * (rowH - 14);
+      ctx.strokeStyle = 'rgba(248,81,73,0.3)';
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath(); ctx.moveTo(0, ty); ctx.lineTo(W, ty); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // Data line
+    ctx.strokeStyle = row.color;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    for (let i = 0; i < data.length; i++) {
+      const x = (i / (BUF_SIZE - 1)) * W;
+      const y = yOff + rowH - (data[i] / maxVal) * (rowH - 14);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    // Separator
+    if (r < rows.length - 1) {
+      ctx.strokeStyle = 'rgba(0,200,120,0.1)';
+      ctx.lineWidth = 0.5;
+      ctx.beginPath(); ctx.moveTo(0, yOff + rowH); ctx.lineTo(W, yOff + rowH); ctx.stroke();
+    }
+  }
+}
+
+function updateMetrics(sensor) {
+  const buf = state[sensor].buf;
+  const h = state[sensor].health;
+  if (!buf.length) return;
+  const latest = buf[buf.length - 1];
+
+  document.getElementById(sensor + '-eph').textContent = (latest.eph_m || 0).toFixed(1) + 'm';
+  document.getElementById(sensor + '-epv').textContent = (latest.epv_m || 0).toFixed(1) + 'm';
+  document.getElementById(sensor + '-dev').textContent = (latest._dev || 0).toFixed(1) + 'm';
+  document.getElementById(sensor + '-spd').textContent = (latest.speed_mps || 0).toFixed(2);
+
+  // Fix dot
+  const fixDot = document.getElementById(sensor + '-fix');
+  const mode = latest.mode || 0;
+  fixDot.className = 'fix-dot ' + (mode >= 3 ? 'fix3d' : mode >= 2 ? 'fix2d' : 'nofix');
+
+  if (h) {
+    document.getElementById(sensor + '-std').textContent = (h.horizontal_std_m || 0).toFixed(2) + 'm';
+    document.getElementById(sensor + '-sats').textContent = h.sats_used != null ? h.sats_used : '—';
+    const statusBox = document.getElementById(sensor + '-status');
+    const alerts = h.alerts || [];
+    if (alerts.length) {
+      const worst = alerts.reduce((a, b) => severityRank(a.severity) > severityRank(b.severity) ? a : b);
+      statusBox.innerHTML = '<span class="alert-text ' + worst.severity + '">⚠ ' +
+        alerts.map(a => a.reason).join(' | ') + '</span>';
+    } else {
+      statusBox.innerHTML = '<span style="color:#00c878">✓ NOMINAL</span> — ' + (h.samples || 0) + ' samples';
+    }
+  }
+}
+
+// Render loop (~2fps)
+setInterval(() => {
+  for (const sensor of Object.keys(SENSORS)) {
+    renderScatter(sensor);
+    renderTimeSeries(sensor);
+    updateMetrics(sensor);
+  }
+}, 500);
+</script>
+</body>
+</html>

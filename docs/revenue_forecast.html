@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ADS-B Integrity Service — 10-Year Revenue Forecast</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { 
+  background: #060913; 
+  color: #d1d5db; 
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; 
+  padding: 24px; 
+  line-height: 1.5;
+}
+h1 { color: #f3f4f6; margin-bottom: 4px; font-size: 1.6em; font-weight: 800; letter-spacing: -0.025em; }
+.subtitle { color: #9ca3af; margin-bottom: 24px; font-size: 0.9em; font-weight: 400; }
+.container { max-width: 1400px; margin: 0 auto; }
+.grid { display: grid; grid-template-columns: 360px 1fr; gap: 24px; }
+@media (max-width: 1024px) { .grid { grid-template-columns: 1fr; } }
+.panel { 
+  background: #0f172a; 
+  border: 1px solid #1e293b; 
+  border-radius: 12px; 
+  padding: 20px; 
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1);
+}
+.panel h2 { 
+  color: #38bdf8; 
+  font-size: 0.95em; 
+  text-transform: uppercase; 
+  letter-spacing: 0.05em; 
+  margin-bottom: 16px; 
+  border-bottom: 1px solid #1e293b; 
+  padding-bottom: 10px; 
+}
+label { display: block; font-size: 0.8em; color: #9ca3af; margin-top: 14px; margin-bottom: 6px; }
+input[type=range] { 
+  width: 100%; 
+  accent-color: #38bdf8; 
+  background: #1e293b; 
+  height: 6px; 
+  border-radius: 3px; 
+  appearance: none;
+}
+input[type=range]::-webkit-slider-runnable-track { background: #1e293b; height: 6px; border-radius: 3px; }
+.val { float: right; color: #38bdf8; font-weight: 700; background: rgba(56, 189, 248, 0.1); padding: 1px 6px; border-radius: 4px; }
+canvas { width: 100%; height: 320px; background: #0b0f19; border-radius: 8px; border: 1px solid #1e293b; display: block; }
+.results { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 20px; }
+.metric { background: #0b0f19; border: 1px solid #1e293b; border-radius: 8px; padding: 16px; text-align: center; }
+.metric .value { font-size: 1.6em; font-weight: 800; color: #34d399; letter-spacing: -0.03em; }
+.metric .label { font-size: 0.75em; color: #6b7280; margin-top: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+.assumptions { margin-top: 20px; font-size: 0.75em; color: #6b7280; line-height: 1.6; background: rgba(30, 41, 59, 0.3); padding: 12px; border-radius: 8px; border: 1px solid rgba(30, 41, 59, 0.5); }
+table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 0.85em; }
+th, td { padding: 8px 12px; border-bottom: 1px solid #1e293b; text-align: right; }
+th { color: #6b7280; font-weight: 600; text-transform: uppercase; font-size: 0.8em; letter-spacing: 0.05em; border-bottom: 2px solid #1e293b; }
+th:first-child, td:first-child { text-align: left; color: #f3f4f6; font-weight: 600; }
+.highlight { color: #38bdf8; font-weight: bold; }
+tr:hover { background: rgba(30, 41, 59, 0.4); }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>📡 ADS-B Integrity as a Network Service — Revenue Forecast</h1>
+<p class="subtitle">10-year tactical evaluation model for operator-embedded RF surveillance grids</p>
+
+<div class="grid">
+<div>
+  <div class="panel">
+    <h2>📊 Market Inputs</h2>
+    <label>Addressable cell sites (Europe) <span class="val" id="v-sites">500,000</span></label>
+    <input type="range" id="sites" min="100000" max="2000000" step="50000" value="500000">
+
+    <label>Site penetration Year 10 (%) <span class="val" id="v-pen">5%</span></label>
+    <input type="range" id="pen" min="1" max="30" value="5">
+
+    <label>Ramp-up start (year) <span class="val" id="v-ramp">2</span></label>
+    <input type="range" id="ramp" min="1" max="5" value="2">
+
+    <label>Monthly revenue per site (€) <span class="val" id="v-arpu">50</span></label>
+    <input type="range" id="arpu" min="10" max="200" step="5" value="50">
+
+    <label>Hardware cost per site (€) <span class="val" id="v-hw">75</span></label>
+    <input type="range" id="hw" min="20" max="200" step="5" value="75">
+
+    <label>Annual churn (%) <span class="val" id="v-churn">5%</span></label>
+    <input type="range" id="churn" min="0" max="20" value="5">
+  </div>
+
+  <div class="panel" style="margin-top:20px;">
+    <h2>💰 Additional Revenue Streams</h2>
+    <label>Enterprise/ANSP contracts (Year 5+, €K/yr) <span class="val" id="v-ent">500</span></label>
+    <input type="range" id="ent" min="0" max="5000" step="100" value="500">
+
+    <label>Data feed licenses (Year 3+, €K/yr) <span class="val" id="v-data">200</span></label>
+    <input type="range" id="data" min="0" max="2000" step="50" value="200">
+
+    <label>Defence/gov contracts (Year 4+, €K/yr) <span class="val" id="v-gov">1000</span></label>
+    <input type="range" id="gov" min="0" max="10000" step="100" value="1000">
+  </div>
+
+  <div class="panel" style="margin-top:20px;">
+    <h2>📉 Cost Structure</h2>
+    <label>Platform team (FTEs) <span class="val" id="v-team">5</span></label>
+    <input type="range" id="team" min="1" max="30" value="5">
+
+    <label>Avg cost per FTE (€K/yr) <span class="val" id="v-fte">100</span></label>
+    <input type="range" id="fte" min="60" max="200" step="10" value="100">
+
+    <label>Cloud/infra (€K/yr base) <span class="val" id="v-cloud">50</span></label>
+    <input type="range" id="cloud" min="10" max="500" step="10" value="50">
+  </div>
+</div>
+
+<div>
+  <div class="panel">
+    <h2>📈 Projected Scale & Profit Matrix</h2>
+    <canvas id="chart"></canvas>
+    <div class="results">
+      <div class="metric"><div class="value" id="r-y10" style="color: #f3f4f6;">—</div><div class="label">Year 10 ARR</div></div>
+      <div class="metric"><div class="value" id="r-cum" style="color: #38bdf8;">—</div><div class="label">Cumulative Rev</div></div>
+      <div class="metric"><div class="value" id="r-profit">—</div><div class="label">Cumulative Profit</div></div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:20px; overflow-x: auto;">
+    <h2>📋 Year-by-Year Financial Breakdown</h2>
+    <table id="table">
+      <thead><tr><th>Year</th><th>Nodes</th><th>Net Rev</th><th>Other Rev</th><th>Total ARR</th><th>OpEx/CapEx</th><th>Net Margin</th><th>Cum. Balance</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="assumptions">
+    <strong>Model Logic Architecture:</strong> Uses standard logic S-curve mechanics (logistic ramp function from start year to targets). Network calculations reflect running node metrics multiplied by monthly ARPU profiles scaled annually. Node deployments take local hardware CapEx hits inside respective scaling years. Operations resource models compute 1 baseline engineering unit scaled linearly per 5,000 deployment targets. Cloud platform footprint calculates fixed base overhead augmented by standard node load data streams.
+  </div>
+</div>
+</div>
+</div>
+
+<script>
+const inputs = ['sites','pen','ramp','arpu','hw','churn','ent','data','gov','team','fte','cloud'];
+const fmt = (n) => n >= 1e6 ? (n/1e6).toFixed(2)+'M€' : n >= 1e3 ? (n/1e3).toFixed(0)+'K€' : n.toFixed(0)+'€';
+
+function calculate() {
+  const p = {};
+  inputs.forEach(id => { p[id] = parseFloat(document.getElementById(id).value); });
+
+  document.getElementById('v-sites').textContent = (p.sites/1000).toFixed(0) + 'K';
+  document.getElementById('v-pen').textContent = p.pen + '%';
+  document.getElementById('v-ramp').textContent = p.ramp;
+  document.getElementById('v-arpu').textContent = p.arpu + '€';
+  document.getElementById('v-hw').textContent = p.hw + '€';
+  document.getElementById('v-churn').textContent = p.churn + '%';
+  document.getElementById('v-ent').textContent = p.ent + 'K';
+  document.getElementById('v-data').textContent = p.data + 'K';
+  document.getElementById('v-gov').textContent = p.gov + 'K';
+  document.getElementById('v-team').textContent = p.team;
+  document.getElementById('v-fte').textContent = p.fte + 'K';
+  document.getElementById('v-cloud').textContent = p.cloud + 'K';
+
+  const maxSites = p.sites * p.pen / 100;
+  const years = [];
+  let cumRev = 0, cumProfit = 0;
+
+  for (let y = 1; y <= 10; y++) {
+    const t = Math.max(0, (y - p.ramp) / (10 - p.ramp));
+    const adoption = t <= 0 ? 0 : maxSites / (1 + Math.exp(-8 * (t - 0.4)));
+    const activeSites = Math.round(adoption * (1 - p.churn/100));
+
+    const netRev = activeSites * p.arpu * 12;
+    const entRev = y >= 5 ? p.ent * 1000 * Math.min((y-4)/4, 1) : 0;
+    const dataRev = y >= 3 ? p.data * 1000 * Math.min((y-2)/6, 1) : 0;
+    const govRev = y >= 4 ? p.gov * 1000 * Math.min((y-3)/5, 1) : 0;
+    const otherRev = entRev + dataRev + govRev;
+
+    const totalRev = netRev + otherRev;
+
+    const teamSize = Math.max(p.team, p.team + Math.floor(activeSites / 5000));
+    const teamCost = teamSize * p.fte * 1000;
+    const cloudCost = (p.cloud * 1000) + activeSites * 2 * 12;
+    const hwCost = y === 1 ? 0 : Math.max(0, (adoption - (years[y-2]?.rawAdoption || 0))) * p.hw;
+    const totalCost = teamCost + cloudCost + hwCost;
+
+    const profit = totalRev - totalCost;
+    cumRev += totalRev;
+    cumProfit += profit;
+
+    years.push({ y, sites: activeSites, rawAdoption: adoption, netRev, otherRev, totalRev, totalCost, profit, cumProfit });
+  }
+
+  const last = years[9];
+  document.getElementById('r-y10').textContent = fmt(last.totalRev);
+  document.getElementById('r-cum').textContent = fmt(cumRev);
+  document.getElementById('r-profit').textContent = fmt(cumProfit);
+  document.getElementById('r-profit').style.color = cumProfit >= 0 ? '#34d399' : '#f87171';
+
+  const tbody = document.querySelector('#table tbody');
+  tbody.innerHTML = years.map(r => `<tr>
+    <td>Year ${r.y}</td>
+    <td>${r.sites.toLocaleString()}</td>
+    <td>${fmt(r.netRev)}</td>
+    <td>${fmt(r.otherRev)}</td>
+    <td class="highlight">${fmt(r.totalRev)}</td>
+    <td style="color:#f87171">${fmt(r.totalCost)}</td>
+    <td style="color:${r.profit>=0?'#34d399':'#f87171'}">${fmt(r.profit)}</td>
+    <td>${fmt(r.cumProfit)}</td>
+  </tr>`).join('');
+
+  drawChart(years);
+}
+
+function drawChart(years) {
+  const canvas = document.getElementById('chart');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+  const W = rect.width, H = rect.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const pad = { t: 30, r: 25, b: 35, l: 70 };
+  const cW = W - pad.l - pad.r, cH = H - pad.t - pad.b;
+
+  const maxVal = Math.max(...years.map(r => r.totalRev), ...years.map(r => Math.abs(r.cumProfit)), 1);
+
+  ctx.strokeStyle = '#1e293b';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.t + (cH / 4) * i;
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W - pad.r, y); ctx.stroke();
+    ctx.fillStyle = '#6b7280';
+    ctx.font = '10px ui-monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(fmt(maxVal * (1 - i/4)), pad.l - 10, y + 3);
+  }
+
+  ctx.textAlign = 'center';
+  years.forEach((r, i) => {
+    const x = pad.l + (i + 0.5) * (cW / 10);
+    ctx.fillStyle = '#6b7280';
+    ctx.font = '10px ui-monospace';
+    ctx.fillText('Y' + r.y, x, H - 12);
+  });
+
+  years.forEach((r, i) => {
+    const x = pad.l + i * (cW / 10) + 6;
+    const bw = (cW / 10) - 12;
+    const h = (r.totalRev / maxVal) * cH;
+    
+    ctx.fillStyle = '#1e3a8a';
+    ctx.fillRect(x, pad.t + cH - h, bw, h);
+
+    const oh = (r.otherRev / maxVal) * cH;
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillRect(x, pad.t + cH - h, bw, oh);
+  });
+
+  ctx.strokeStyle = '#34d399';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  years.forEach((r, i) => {
+    const x = pad.l + (i + 0.5) * (cW / 10);
+    const y = pad.t + cH - (Math.max(0, r.cumProfit) / maxVal) * cH;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  ctx.fillStyle = '#38bdf8'; ctx.fillRect(pad.l + 10, 12, 12, 12);
+  ctx.fillStyle = '#9ca3af'; ctx.font = '11px ui-monospace'; ctx.textAlign = 'left';
+  ctx.fillText('Annual Revenue (Total / Other Stack)', pad.l + 28, 22);
+  
+  ctx.strokeStyle = '#34d399'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(pad.l + 310, 18); ctx.lineTo(pad.l + 325, 18); ctx.stroke();
+  ctx.fillStyle = '#9ca3af'; ctx.fillText('Cumulative Balance', pad.l + 332, 22);
+}
+
+inputs.forEach(id => document.getElementById(id).addEventListener('input', calculate));
+calculate();
+window.addEventListener('resize', calculate);
+</script>
+</body>
+</html>
