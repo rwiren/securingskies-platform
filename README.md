@@ -1,14 +1,14 @@
 # 🦅 SecuringSkies Platform
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-v1.2.3-success.svg)](#)
+[![Version](https://img.shields.io/badge/Version-v1.2.7-success.svg)](#)
 [![Wiki](https://img.shields.io/badge/Docs-Wiki-blueviolet.svg)](https://github.com/rwiren/securingskies-platform/wiki)
 [![Status](https://img.shields.io/badge/Status-Field_Proven-success.svg)](https://github.com/rwiren/securingskies-platform/wiki/Field%E2%80%90Reports)
 [![Python](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](#)
 [![Code Style](https://img.shields.io/badge/Code%20Style-Black-000000.svg)](https://github.com/psf/black)
 [![Last Commit](https://img.shields.io/github/last-commit/rwiren/securingskies-platform?style=flat&color=blue)](https://github.com/rwiren/securingskies-platform/commits/main)
 
-**Status:** RELEASED v1.2.3 (Validated in Field Ops: "Sibbo Gauntlet" & "Jorvas Triangle")
+**Status:** RELEASED v1.2.7.
 
 **Intelligence:** Neural (Llama 3.1 / Gemma 2) + Deterministic (RTK/Telemetry)  
 **Documentation:** [**Read the Field Reports & Benchmarks on the Wiki**](https://github.com/rwiren/securingskies-platform/wiki)
@@ -76,7 +76,7 @@ securingskies-platform/
 │   ├── replay/                 # -> "Time Machine" (HITL Tools)
 │   │   └── replay_tool.py
 │   ├── optimizer/              # -> DSPy Prompt Optimization
-│   ├── optimizer.py            # -> Training Entry Point
+│   ├── optimizer.py            # -> Training Entry Point (DSPy)
 │   ├── eda_mission_analysis.py # -> Exploratory Data Analysis & Visualization
 │   ├── compare_sensors.py      # -> Twin-Sensor Correlation Analysis
 │   ├── compare_data_sources.py # -> Data Source Comparison Tool
@@ -285,4 +285,4 @@ We follow a lean Research & Development workflow focused on the **nightly** bran
     ```
 
 ---
-*SecuringSkies Research Grid | Status: main v1.2.3*
+*SecuringSkies Research Grid | Status: main v1.2.7*

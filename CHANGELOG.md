@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.7] - 2026-02-03
+**Status:** STABLE (Unified Visualization)
+**Focus:** 3D Geospatial Integration, macOS Stability, and Post-Mission Forensics.
+
+### Added
+- **Visualization:** Implemented **Unified Commander** (`web/templates/unified_map.html`), a hybrid dashboard allowing one-click toggling between 2D Tactical (Leaflet) and 3D Globe (CesiumJS) views.
+- **Forensics:** Added `labs/jsonl_to_czml.py` to convert raw JSONL flight logs into **CZML** format, enabling cinematic 3D replay of missions in Cesium Stories.
+- **Reliability:** Introduced "Safe Mode" 3D rendering that defaults to OpenStreetMap imagery if Cesium Ion tokens fail, preventing "Black Screen" crashes.
+- **Artifacts:** Generated `labs/mission_replay.czml` from the "Jorvas Test" (Mission 20260203), proving data integrity for Autel and OwnTracks assets.
+
+### Changed
+- **Engine:** Switched `web/server.py` from `threading` to **`gevent`** to resolve critical WebSocket `AssertionError` crashes on macOS Silicon (M-series) chips.
+- **Security:** Refactored `web/server.py` to inject Cesium Tokens securely via server-side variables, removing hardcoded credentials from client-side HTML.
+- **Architecture:** Decoupled 3D map initialization from network connectivity; the HUD now reports "ONLINE" status even if the 3D globe fails to load (e.g., firewall issues).
+
+### Fixed
+- **Visuals:** Fixed "Blue Screen" overlay issue where the 3D container blocked the 2D map by enforcing strict CSS `display: none` toggling.
+- **Data:** Resolved "Null Island" filtering issue where Autel drones were invisible during GPS lock acquisition phase.
+- **Parsing:** Updated parsing logic in `web/server.py` to correctly identify Autel Smart Controllers (`TH*`) versus UAVs (`1748*`) and assign distinct icons.
+
 ## [1.2.3] - 2026-01-27
 **Status:** VALIDATED (Production Ready)
 **Focus:** AI Optimization, Scientific Validation, and Documentation.

@@ -1,6 +1,8 @@
 """
 SecuringSkies Platform - Scientific Metrics Engine (Auditor)
 ============================================================
+Version: 1.2.7
+Status: PRODUCTION
 ROLE: Real-time Evaluation of RAG Performance.
 METRICS:
   1. Latency (System Performance)

@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SecuringSkies 3D | Debug Mode</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cesium/1.114.0/Cesium.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/cesium/1.114.0/Widgets/widgets.min.css" rel="stylesheet">
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Courier New', monospace; }
+        #cesiumContainer { width: 100%; height: 100vh; background: #000; }
+        
+        #hud {
+            position: absolute; top: 10px; right: 10px; 
+            background: rgba(0, 0, 0, 0.8); border: 1px solid #0f0; color: #0f0;
+            padding: 10px; width: 200px; z-index: 100;
+        }
+        
+        #raw-feed {
+            position: absolute; top: 10px; left: 10px; 
+            background: rgba(0, 0, 50, 0.9); border: 1px solid #44f; color: #aaf;
+            padding: 10px; width: 300px; height: 300px; 
+            overflow-y: auto; font-size: 11px; z-index: 100;
+        }
+
+        .led { height: 10px; width: 10px; border-radius: 50%; display: inline-block; }
+        .led-on { background: #0f0; box-shadow: 0 0 5px #0f0; }
+        .led-err { background: #f00; box-shadow: 0 0 5px #f00; }
+    </style>
+</head>
+<body>
+
+    <div id="raw-feed">
+        <b>DATA STREAM (Lat/Lon/Alt)</b><hr>
+        <div id="feed-content">Waiting for packets...</div>
+    </div>
+
+    <div id="hud">
+        <b>SYSTEM STATUS</b><br>
+        <span id="led" class="led led-err"></span> <span id="status">CONNECTING</span><br>
+        MAP: <span id="map-status">INIT</span><br>
+        ASSETS: <span id="count">0</span>
+    </div>
+
+    <div id="cesiumContainer"></div>
+
+    <script>
+        window.addEventListener('load', function() {
+            
+            // 1. SETUP MAP
+            try {
+                // TOKEN FROM CURL TEST
+                Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI1ZmUxNTBlYi0zZmRlLTQyMjMtYjA2ZS1mMmVkNmE3NDBhNmUiLCJpZCI6Mzg2Njc3LCJpYXQiOjE3NzAxNDkzMDF9.DvTCiKLqqLrGgdcMb3aYT2poM4eoC3WqI0ifSQ6aneE';
+
+                window.viewer = new Cesium.Viewer('cesiumContainer', {
+                    terrainProvider: undefined, // Safe Mode
+                    imageryProvider: new Cesium.IonImageryProvider({ assetId: 2 }), // Bing Maps
+                    baseLayerPicker: false, timeline: false, animation: false,
+                    homeButton: false, sceneModePicker: false, navigationHelpButton: false, 
+                    geocoder: false, selectionIndicator: false, infoBox: false
+                });
+                
+                window.viewer.cesiumWidget.creditContainer.style.display = "none";
+                document.getElementById('map-status').innerText = "OK (Satellite)";
+
+                // FORCE CAMERA TO FINLAND (Jorvas)
+                window.viewer.camera.setView({
+                    destination: Cesium.Cartesian3.fromDegrees(24.83, 60.32, 5000), // Height 5km
+                    orientation: {
+                        heading: 0.0,
+                        pitch: Cesium.Math.toRadians(-90.0), // Look down
+                        roll: 0.0
+                    }
+                });
+
+                // Add Buildings safely
+                try {
+                    const b = window.viewer.scene.primitives.add(Cesium.createOsmBuildings());
+                    b.style = new Cesium.Cesium3DTileStyle({
+                        color: { conditions: [['true', 'color("cyan", 0.5)']] }
+                    });
+                } catch(e) {}
+
+            } catch (e) {
+                console.error(e);
+                document.getElementById('map-status').innerText = "FAILED";
+                // Fallback: If Cesium fails, the screen stays black, 
+                // BUT the Data Stream panel will still work.
+            }
+
+            // 2. NETWORK
+            const socket = io({transports: ['websocket', 'polling']});
+            
+            socket.on('connect', () => {
+                document.getElementById('status').innerText = "ONLINE";
+                document.getElementById('led').className = "led led-on";
+            });
+
+            socket.on('update', (data) => {
+                const { tid, lat, lon, alt, icon } = data;
+                
+                // UPDATE RAW FEED (Proves data arrival)
+                const line = `[${new Date().toLocaleTimeString()}] <b>${tid}</b>: ${lat.toFixed(4)}, ${lon.toFixed(4)} <br>`;
+                document.getElementById('feed-content').innerHTML = line + document.getElementById('feed-content').innerHTML.slice(0, 1000);
+
+                if (window.viewer) renderDrone(tid, lat, lon, alt, icon);
+            });
+
+            function renderDrone(tid, lat, lon, alt, icon) {
+                let color = Cesium.Color.CYAN;
+                if (icon === 'mobile') color = Cesium.Color.DODGERBLUE;
+                if (icon === 'helicopter') color = Cesium.Color.ORANGE;
+
+                let entity = window.viewer.entities.getById(tid);
+                if (!entity) {
+                    entity = window.viewer.entities.add({
+                        id: tid,
+                        position: Cesium.Cartesian3.fromDegrees(lon, lat, alt),
+                        point: { pixelSize: 15, color: color, outlineColor: Cesium.Color.WHITE, outlineWidth: 2 },
+                        label: { text: tid, font: '12pt monospace', style: Cesium.LabelStyle.FILL_AND_OUTLINE, pixelOffset: new Cesium.Cartesian2(0, -20) },
+                        polyline: { positions: new Cesium.CallbackProperty(() => [
+                            Cesium.Cartesian3.fromDegrees(lon, lat, alt),
+                            Cesium.Cartesian3.fromDegrees(lon, lat, 0)
+                        ], false), width: 2, material: color }
+                    });
+                    
+                    // IF CAMERA WAS LOST, SNAP TO FIRST DRONE
+                    if (window.viewer.entities.values.length === 1) {
+                        window.viewer.camera.flyTo({
+                            destination: Cesium.Cartesian3.fromDegrees(lon, lat, 2000)
+                        });
+                    }
+                } else {
+                    entity.position = Cesium.Cartesian3.fromDegrees(lon, lat, alt);
+                }
+                document.getElementById('count').innerText = window.viewer.entities.values.length;
+            }
+        });
+    </script>
+</body>
+</html>

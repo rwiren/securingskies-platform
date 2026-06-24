@@ -60,3 +60,47 @@ The AI HAT+ 2 introduces a dedicated memory pool, changing the resource math.
 
 ## 5. References
 * [Introducing the Raspberry Pi AI HAT+ 2: Generative AI on Raspberry Pi 5](https://www.raspberrypi.com/news/introducing-the-raspberry-pi-ai-hat-plus-2-generative-ai-on-raspberry-pi-5/)
+
+---
+
+## 6. The PCIe Reality (AI vs. Storage)
+**Critical Constraint:** The Raspberry Pi 5 possesses only **one** PCIe user port. The **AI HAT+ 2** consumes this port entirely. Consequently, you cannot utilize a standard NVMe HAT and the AI HAT+ 2 simultaneously without specialized hardware.
+
+### Solution Options for v2.0
+#### Option A: USB 3.1 Boot (Recommended)
+* **Configuration:** AI HAT+ 2 (PCIe) + High-Speed USB 3.1 Gen 1 SSD (e.g., Samsung T7 or M.2 SATA-to-USB adapter).
+* **Pros:** Simplest implementation, high reliability, preserves 100% of AI bandwidth.
+* **Cons:** USB 3.0 latency is slightly higher than NVMe (negligible impact on this architecture provided the Video Ring Buffer stays in RAM).
+
+#### Option B: PCIe Packet Switch (Advanced)
+* **Configuration:** Use a PCIe Packet Switch (e.g., *Pineboards HatBRICK! Commander*) to split the single lane into two.
+* **Pros:** Enables simultaneous AI HAT+ 2 and NVMe usage.
+* **Cons:** Significantly increases physical stack height (bulky), requires custom enclosure, and adds hardware cost. Bandwidth is shared (Gen 2 x1) between AI and Storage.
+
+---
+
+## 7. Critical Peripherals & Environment
+
+### 7.1 Power & Delivery (PoE vs. USB-C)
+* **Challenge:** The "Stack Height" conflict. You cannot easily stack the official PoE+ HAT, the Active Cooler, and the AI HAT+ 2 simultaneously.
+* **Recommended Solution:** **Gigabit PoE+ Splitter (USB-C)**.
+    * Use an external splitter that splits the ethernet line into Data (RJ45) and Power (USB-C).
+    * This removes the heat source from the CPU stack and guarantees full 5V/5A power delivery without GPIO conflicts.
+* **Alternate:** If using standard power, ensure the USB-C supply supports **27W (5V/5A)** PD to support both the Pi 5 and the hungry Hailo-10H chip.
+
+### 7.2 Cooling Strategy
+* **Mandatory:** **Raspberry Pi Active Cooler**.
+* **Clearance:** The AI HAT+ 2 includes a **16mm stacking header** specifically designed to provide clearance for the Active Cooler to fit underneath it.
+* **Airflow:** Ensure the case has side vents. The Active Cooler blows air *down* onto the CPU; if the case is sealed, hot air will trap under the HAT, throttling the AI performance.
+
+### 7.3 Timekeeping (RTC)
+* **Requirement:** Essential for "Scout" missions where the device may boot offline (no NTP time sync) to timestamp log files accurately.
+* **Hardware:** **Raspberry Pi RTC Battery** (Panasonic ML2032 or similar).
+* **Connection:** Plugs directly into the dedicated 2-pin JST battery connector on the Pi 5 board.
+
+### 7.4 Physical Enclosure
+* **Constraint:** The Standard Raspberry Pi 5 Case *will not close* with the AI HAT+ 2 installed.
+* **Recommended Cases:**
+    * **HighPi Pro 5S:** Designed specifically for "tall" HAT stacks.
+    * **KKSB Case for Raspberry Pi 5 (HAT Version):** Provides extra headroom.
+    * **Open/Layer Cases:** Acrylic "slice" cases are the most flexible for development/lab use.

@@ -2,106 +2,78 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>SecuringSkies | Tactical Grid v0.9.8</title>
+    <title>SecuringSkies | 2D Tactical Grid</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <style>
-        /* TACTICAL DARK MODE THEME */
         body { margin: 0; background: #0f0f0f; color: #00ff00; font-family: 'Courier New', monospace; }
-        
         #map { height: 100vh; width: 100vw; z-index: 1; }
-        
         #hud {
             position: absolute; top: 20px; left: 20px; z-index: 1000;
             background: rgba(0, 0, 0, 0.85); padding: 15px; 
             border: 1px solid #00ff00; border-radius: 5px; 
-            max-width: 300px; box-shadow: 0 0 10px #004400;
+            min-width: 200px;
         }
-        
-        h1 { 
-            margin: 0 0 10px 0; font-size: 16px; 
-            text-transform: uppercase; border-bottom: 1px solid #004400; 
-            padding-bottom: 5px; color: #00ff00;
-        }
-        
-        .asset-row { font-size: 12px; margin-bottom: 5px; opacity: 0.9; font-weight: bold; }
-        
-        /* POPUP STYLING */
-        .leaflet-popup-content-wrapper { background: rgba(0,0,0,0.9); color: #00ff00; border: 1px solid #00ff00; }
-        .leaflet-popup-tip { background: rgba(0,0,0,0.9); border: 1px solid #00ff00; }
+        .dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; margin-right: 8px; }
     </style>
 </head>
 <body>
 
-<div id="hud">
-    <h1>🦅 Tactical Status</h1>
-    <div id="asset-list">Waiting for link...</div>
-</div>
-<div id="map"></div>
+    <div id="hud">
+        <b>🦅 TACTICAL FEED</b><br>
+        STATUS: <span id="status" style="color:#888">CONNECTING...</span>
+        <hr style="border-color:#040">
+        <div id="asset-list">Waiting for data...</div>
+    </div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
-<script>
-    // 1. INITIALIZE MAP (Vantaa Center)
-    const map = L.map('map').setView([60.3195, 24.8310], 15);
-    
-    // Dark Matter Tiles
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; OpenStreetMap &copy; CARTO',
-        subdomains: 'abcd',
-        maxZoom: 20
-    }).addTo(map);
+    <div id="map"></div>
 
-    const markers = {};
-    const socket = io();
+    <script>
+        // 1. MAP SETUP (Dark Mode, No Token Required)
+        const map = L.map('map').setView([60.2, 24.5], 10);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; CARTO', maxZoom: 20
+        }).addTo(map);
 
-    // 2. REAL-TIME UPDATE LOOP
-    socket.on('update', (data) => {
-        const { tid, lat, lon, icon } = data;
-        
-        // --- COLOR CODING RULES ---
-        let color = '#3388ff'; // Default Blue (Generic)
-        
-        if (icon === 'mobile')     color = '#3388ff'; // Blue (Team Phones)
-        if (icon === 'plane')      color = '#ff3333'; // Red (Hostiles/RID)
-        if (icon === 'helicopter') color = '#ffaa33'; // Orange (Drones)
-        if (icon === 'controller') color = '#00ffff'; // Cyan (Pilots)
+        // 2. NETWORK
+        const socket = io({transports: ['websocket', 'polling']});
+        const markers = {};
 
-        const html = `<b style="color:${color}">${tid}</b><br>LAT: ${lat.toFixed(6)}<br>LON: ${lon.toFixed(6)}`;
+        socket.on('connect', () => {
+            document.getElementById('status').innerText = "ONLINE";
+            document.getElementById('status').style.color = "#00ff00";
+        });
 
-        if (markers[tid]) {
-            // Move existing marker
-            markers[tid].setLatLng([lat, lon]).setPopupContent(html);
-            markers[tid].setStyle({color: color, fillColor: color});
-        } else {
-            // Create new marker
-            markers[tid] = L.circleMarker([lat, lon], {
-                color: color, 
-                fillColor: color, 
-                fillOpacity: 0.8, 
-                radius: 8,
-                weight: 2
-            }).addTo(map).bindPopup(html);
+        socket.on('update', (data) => {
+            const { tid, lat, lon, icon } = data;
+            
+            let color = '#ffffff';
+            if (icon === 'mobile')     color = '#3388ff';
+            if (icon === 'plane')      color = '#ff3333';
+            if (icon === 'helicopter') color = '#ffaa33';
+            if (icon === 'controller') color = '#00ffff';
+
+            if (markers[tid]) {
+                markers[tid].setLatLng([lat, lon]);
+                markers[tid].setStyle({color: color, fillColor: color});
+            } else {
+                markers[tid] = L.circleMarker([lat, lon], {
+                    color: color, fillColor: color, fillOpacity: 0.8, radius: 8
+                }).addTo(map).bindPopup(`<b>${tid}</b>`);
+            }
+            updateHUD();
+        });
+
+        function updateHUD() {
+            const keys = Object.keys(markers);
+            const list = document.getElementById('asset-list');
+            if (keys.length === 0) { list.innerHTML = "Scanning..."; return; }
+            list.innerHTML = keys.map(tid => {
+                const color = markers[tid].options.color;
+                return `<div><span class="dot" style="background:${color}"></span> ${tid}</div>`;
+            }).join('');
         }
-
-        updateHUD();
-    });
-
-    // 3. HUD LIST UPDATE
-    function updateHUD() {
-        const list = document.getElementById('asset-list');
-        const keys = Object.keys(markers);
-        
-        if (keys.length === 0) {
-            list.innerHTML = "Scanning...";
-            return;
-        }
-
-        list.innerHTML = keys.map(tid => {
-            const m = markers[tid];
-            const color = m.options.color;
-            return `<div class="asset-row" style="color:${color}">📡 ${tid}</div>`;
-        }).join('');
-    }
-</script>
+    </script>
 </body>
 </html>

@@ -1,7 +1,7 @@
 """
 SecuringSkies Platform - Geospatial Utilities
 =============================================
-Version: 0.9.9
+Version: 1.2.7
 Role: Haversine math and 3D distance calculations for telemetry.
 """
 
